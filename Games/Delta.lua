@@ -10,6 +10,52 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RSPlayers = ReplicatedStorage:WaitForChild("Players")
+
+-- Создаём GV при появлении player folder
+RSPlayers.ChildAdded:Connect(function(playerFolder)
+    if playerFolder.Name ~= LocalPlayer.Name then return end
+    playerFolder.ChildAdded:Connect(function(status)
+        if status.Name ~= "Status" then return end
+        task.wait(0.5)  -- Ждём загрузки
+        local gv = Instance.new("Folder")
+        gv.Name = "GameplayVariables"
+        gv.Parent = status
+        
+        -- Обязательные для игры (фикс крашей)
+        local health = Instance.new("IntValue")
+        health.Name = "Health"
+        health.Value = 100
+        health.Parent = gv
+        
+        local maxHealth = Instance.new("IntValue")
+        maxHealth.Name = "MaxHealth"
+        maxHealth.Value = 100
+        maxHealth.Parent = gv
+        
+        local equipped = Instance.new("StringValue")
+        equipped.Name = "EquippedTool"
+        equipped.Value = ""
+        equipped.Parent = gv
+        
+        -- Синхронизируем real HP (опционально)
+        local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            health.Value = humanoid.Health
+            maxHealth.Value = humanoid.MaxHealth
+        end
+        
+        print("GameplayVariables создан для " .. LocalPlayer.Name)
+    end)
+end)
+
+-- Если уже есть
+local myFolder = RSPlayers:FindFirstChild(LocalPlayer.Name)
+if myFolder and myFolder:FindFirstChild("Status") then
+    -- Вызови создание вручную (скопируй код выше)
+end
+
 -- Variables
 local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
