@@ -56,8 +56,6 @@ local Settings = {
         LootDistance = 150
     },
     Misc = {
-        Speed = 1.5,
-        JumpPower = 50,
         NoRecoil = false,
         NoSpread = false,
         AutoFire = false,
