@@ -29,14 +29,14 @@ local currentJumpPower = 50
 -- UI
 -------------------------------------------------
 
-local Window = UI:New({
-    Title = "Data Hub - Project Delta",
+local Window = UI:Window({
+    Name = "Data Hub - Project Delta",
     Size = UDim2.new(0,520,0,360)
 })
 
-local PlayerTab = Window:Tab("Player")
-local VisualTab = Window:Tab("Visuals")
-local MiscTab = Window:Tab("Misc")
+local PlayerTab = Window:Tab({Name = "Player"})
+local VisualTab = Window:Tab({Name = "Visuals"})
+local MiscTab = Window:Tab({Name = "Misc"})
 
 -------------------------------------------------
 -- PLAYER FUNCTIONS
@@ -46,7 +46,7 @@ PlayerTab:Slider({
     Name = "WalkSpeed",
     Min = 16,
     Max = 100,
-    Default = 16,
+    Value = 16,
 
     Callback = function(value)
         currentWalkSpeed = value
@@ -61,7 +61,7 @@ PlayerTab:Slider({
     Name = "JumpPower",
     Min = 50,
     Max = 150,
-    Default = 50,
+    Value = 50,
 
     Callback = function(value)
         currentJumpPower = value
