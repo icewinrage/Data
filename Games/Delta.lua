@@ -494,7 +494,7 @@ local function IsEnemy(player)
 end
 
 -- ███████████████████████████████████████████████████████
--- ESP SYSTEM (сбалансированные размеры)
+-- ESP SYSTEM (адаптивные размеры)
 -- ███████████████████████████████████████████████████████
 
 local function newLine()
@@ -528,7 +528,7 @@ local function CreatePlayerESP(player)
     esp.Distance.Outline = true
     esp.Distance.Font = 2
 
-    -- Толщина линий (оптимальная)
+    -- Толщина линий
     for _, line in ipairs(esp.BoxLines) do
         line.Thickness = 3
     end
@@ -563,6 +563,7 @@ local function UpdatePlayerESP(player)
 
     local char = player.Character
     if not char then
+        -- скрыть всё
         for _, line in ipairs(esp.BoxLines) do line.Visible = false end
         esp.Name.Visible = false
         esp.Distance.Visible = false
@@ -617,17 +618,13 @@ local function UpdatePlayerESP(player)
     local distanceColor = HSVToColor(Settings.Visuals.Distance.Color)
     local skeletonColor = HSVToColor(Settings.Visuals.Skeleton.Color)
 
-    -- Box: динамический размер с ограничениями
+    -- Box: проекция размера модели с ограничениями
     if Settings.Visuals.Box.Enabled then
         local size = char:GetExtentsSize()
         -- Проекция размера на экран
         local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
-        -- Ограничиваем максимальный размер, чтобы вблизи не был огромным
-        local boxWidth = math.min(projSize.X, 150)  -- максимум 150 пикселей
-        local boxHeight = math.min(projSize.Y, 200) -- максимум 200 пикселей
-        -- Минимальный размер для видимости вдалеке
-        boxWidth = math.max(boxWidth, 15)
-        boxHeight = math.max(boxHeight, 25)
+        local boxWidth = math.clamp(projSize.X, 20, 150)
+        local boxHeight = math.clamp(projSize.Y, 30, 200)
         local pos = Vector2.new(screenPos.X - boxWidth/2, screenPos.Y - boxHeight/2)
         local lines = esp.BoxLines
         lines[1].From = pos
@@ -691,10 +688,8 @@ local function UpdatePlayerESP(player)
     if Settings.Visuals.Health.Bar and Settings.Visuals.Box.Enabled then
         local size = char:GetExtentsSize()
         local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
-        local boxHeight = math.min(projSize.Y, 200)
-        boxHeight = math.max(boxHeight, 25)
-        local boxWidth = math.min(projSize.X, 150)
-        boxWidth = math.max(boxWidth, 15)
+        local boxHeight = math.clamp(projSize.Y, 30, 200)
+        local boxWidth = math.clamp(projSize.X, 20, 150)
         local boxPos = Vector2.new(screenPos.X - boxWidth/2, screenPos.Y - boxHeight/2)
 
         local barX = boxPos.X - 8
@@ -718,7 +713,7 @@ local function UpdatePlayerESP(player)
         for _, line in ipairs(esp.HealthBar) do line.Visible = false end
     end
 
-    -- Skeleton (оставляем как есть, линии уже созданы)
+    -- Skeleton (толщина фиксирована)
     if Settings.Visuals.Skeleton.Enabled then
         local head = char:FindFirstChild("Head")
         local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
@@ -878,36 +873,66 @@ local function UpdateObjectESP(list, flag)
     end
 end
 
--- Инициализация существующих объектов
+-- Инициализация существующих объектов (с учётом моделей)
 if Workspace:FindFirstChild("Containers") then
     for _, container in ipairs(Workspace.Containers:GetChildren()) do
-        CreateObjectESP(ItemESP, container, container:FindFirstChild("Part") or container, container.Name, "ItemText")
+        if container:IsA("Model") then
+            local part = container.PrimaryPart or container:FindFirstChildWhichIsA("Part")
+            if part then
+                CreateObjectESP(ItemESP, container, part, container.Name, "ItemText")
+            end
+        end
     end
     Workspace.Containers.ChildAdded:Connect(function(item)
-        CreateObjectESP(ItemESP, item, item:FindFirstChild("Part") or item, item.Name, "ItemText")
+        if item:IsA("Model") then
+            local part = item.PrimaryPart or item:FindFirstChildWhichIsA("Part")
+            if part then
+                CreateObjectESP(ItemESP, item, part, item.Name, "ItemText")
+            end
+        end
     end)
 end
 
 if Workspace:FindFirstChild("QuestItems") then
     for _, quest in ipairs(Workspace.QuestItems:GetChildren()) do
-        CreateObjectESP(QuestESP, quest, quest:FindFirstChild("Part") or quest, quest.Name, "QuestItems")
+        if quest:IsA("Model") then
+            local part = quest.PrimaryPart or quest:FindFirstChildWhichIsA("Part")
+            if part then
+                CreateObjectESP(QuestESP, quest, part, quest.Name, "QuestItems")
+            end
+        end
     end
     Workspace.QuestItems.ChildAdded:Connect(function(quest)
-        CreateObjectESP(QuestESP, quest, quest:FindFirstChild("Part") or quest, quest.Name, "QuestItems")
+        if quest:IsA("Model") then
+            local part = quest.PrimaryPart or quest:FindFirstChildWhichIsA("Part")
+            if part then
+                CreateObjectESP(QuestESP, quest, part, quest.Name, "QuestItems")
+            end
+        end
     end)
 end
 
 if Workspace:FindFirstChild("Vehicles") then
     for _, veh in ipairs(Workspace.Vehicles:GetChildren()) do
-        CreateObjectESP(VehicleESP, veh, veh:FindFirstChild("PrimaryPart") or veh, veh.Name, "Vehicles")
+        if veh:IsA("Model") then
+            local part = veh.PrimaryPart or veh:FindFirstChildWhichIsA("Part")
+            if part then
+                CreateObjectESP(VehicleESP, veh, part, veh.Name, "Vehicles")
+            end
+        end
     end
     Workspace.Vehicles.ChildAdded:Connect(function(veh)
-        CreateObjectESP(VehicleESP, veh, veh:FindFirstChild("PrimaryPart") or veh, veh.Name, "Vehicles")
+        if veh:IsA("Model") then
+            local part = veh.PrimaryPart or veh:FindFirstChildWhichIsA("Part")
+            if part then
+                CreateObjectESP(VehicleESP, veh, part, veh.Name, "Vehicles")
+            end
+        end
     end)
 end
 
 -- ███████████████████████████████████████████████████████
--- DEATH HISTORY (исправленная)
+-- DEATH HISTORY
 -- ███████████████████████████████████████████████████████
 local DeathESP = {}
 local DeathCounter = 0
@@ -929,7 +954,6 @@ local function OnPlayerDied(player)
     table.insert(DeathESP, { pos = root.Position, text = text, count = DeathCounter, time = tick() })
 end
 
--- Подключаемся к смерти всех игроков (кроме себя)
 local function hookPlayer(player)
     if player == LocalPlayer then return end
     local function onCharAdded(char)
@@ -990,7 +1014,7 @@ end
 -- ███████████████████████████████████████████████████████
 RunService.RenderStepped:Connect(function()
     if not Settings.Visuals.General.Enabled then
-        -- Скрываем всё
+        -- скрыть всё
         for _, esp in pairs(PlayerESP) do
             for _, line in ipairs(esp.BoxLines) do line.Visible = false end
             esp.Name.Visible = false
@@ -1021,7 +1045,7 @@ RunService.RenderStepped:Connect(function()
     UpdateDeathESP()
 end)
 
--- Zoom (если нужно)
+-- Zoom
 RunService.RenderStepped:Connect(function()
     if Settings.Visuals.Zoom.Enabled then
         Camera.FieldOfView = 70 - Settings.Visuals.Zoom.Level
@@ -1030,5 +1054,5 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Очистка при удалении игрока
+-- Cleanup on player removal
 Players.PlayerRemoving:Connect(RemovePlayerESP)
