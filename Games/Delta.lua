@@ -1,7 +1,6 @@
--- Data Hub - Project Delta (Final Edition)
--- Game ID: 2862098693 (соответствует лоадеру)
--- Features: Full ESP, RageBot, Gun Mods, World, Misc, Anti-UAC
--- Оптимизирован для работы с DataHub.Utilities, загруженными через Loader.lua
+-- Data Hub - Project Delta (Final with Standard ESP)
+-- Game ID: 2862098693
+-- Features: Full ESP (players via library), RageBot, Gun Mods, World, Misc, Anti-UAC
 
 -- Сервисы
 local UserInputService = game:GetService("UserInputService")
@@ -150,7 +149,7 @@ local HitPartsList = {
     {Name = "Legs", Mode = "Toggle", Value = true}
 }
 
--- Проверка загрузки UI библиотеки (должна быть загружена лоадером)
+-- Проверка загрузки UI библиотеки
 if not DataHub or not DataHub.Utilities or not DataHub.Utilities.UI then
     warn("Data Hub UI library not loaded. Make sure Loader.lua is correct.")
     return
@@ -582,21 +581,80 @@ local function IsEnemy(player)
 end
 
 -- ███████████████████████████████████████████████████████
--- РЕАЛИЗАЦИЯ ESP (использует DataHub.Utilities.Drawing)
+-- ЗАГРУЗКА И НАСТРОЙКА БИБЛИОТЕКИ РИСОВАНИЯ
 -- ███████████████████████████████████████████████████████
 
--- Получаем библиотеку рисования (должна быть загружена лоадером)
 local DrawingLib = DataHub.Utilities.Drawing
 if not DrawingLib then
     warn("Drawing library not found in DataHub. ESP will not work.")
     DrawingLib = {
         AddDrawing = function() return { Visible = false } end,
         SetupFOV = function() end,
+        AddESP = function() end,
+        RemoveESP = function() end,
     }
+else
+    -- Переопределяем функции получения данных для Project Delta
+    local originalGetHealth = DrawingLib.GetHealth
+    local originalGetWeapon = DrawingLib.GetWeapon
+    local originalGetTeam = DrawingLib.GetTeam
+
+    function DrawingLib.GetHealth(Target, Character, Mode)
+        -- Для режима "Player" используем GetRealHealth
+        if Mode == "Player" then
+            return GetRealHealth(Target), 100, GetRealHealth(Target) > 0
+        else
+            -- Для NPC (если потребуется) можно оставить старую логику или заглушку
+            return 100, 100, true
+        end
+    end
+
+    function DrawingLib.GetWeapon(Target, Character, Mode)
+        if Mode == "Player" then
+            return GetCurrentWeapon(Target)
+        else
+            return "None"
+        end
+    end
+
+    function DrawingLib.GetTeam(Target, Character, Mode)
+        if Mode == "Player" then
+            local isEnemy = IsEnemy(Target)
+            -- Возвращаем isEnemy и цвет (можно настроить)
+            local teamColor = isEnemy and Color3.new(1,0,0) or Color3.new(0,1,0)
+            return isEnemy, teamColor
+        else
+            return false, Color3.new(1,1,1)
+        end
+    end
 end
 
--- Хранилища объектов
-local ESPObjects = {}
+-- Настройка FOV кругов для RageBot
+if Settings.Rage.FOVCircle then
+    DrawingLib.SetupFOV("Rage", Window.Flags)
+end
+
+-- Добавляем ESP для всех игроков через библиотеку
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        DrawingLib.AddESP(player, "Player", "Delta/ESP", Window.Flags)
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        DrawingLib.AddESP(player, "Player", "Delta/ESP", Window.Flags)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    DrawingLib.RemoveESP(player)
+end)
+
+-- ███████████████████████████████████████████████████████
+-- КАСТОМНЫЙ ESP ДЛЯ ОБЪЕКТОВ (лут, квесты, машины)
+-- ███████████████████████████████████████████████████████
+
 local ItemESPObjects = {}
 local QuestESPObjects = {}
 local VehicleESPObjects = {}
@@ -612,224 +670,6 @@ local function CreateText(size, center, outline, font)
     })
 end
 
-local function CreateLine()
-    return DrawingLib.AddDrawing("Line", { Visible = false })
-end
-
-local function CreateCircle()
-    return DrawingLib.AddDrawing("Circle", { Visible = false })
-end
-
--- Создание ESP для игрока
-local function CreateESPForPlayer(player)
-    if ESPObjects[player] then return end
-    ESPObjects[player] = {
-        Box = {
-            Lines = { CreateLine(), CreateLine(), CreateLine(), CreateLine() }
-        },
-        Name = CreateText(14, true, true, 2),
-        Distance = CreateText(12, true, true, 2),
-        Tracer = {
-            Main = CreateLine(),
-            Outline = CreateLine()
-        },
-        HeadDot = {
-            Main = CreateCircle(),
-            Outline = CreateCircle()
-        },
-        Highlight = nil
-    }
-end
-
--- Обновление ESP для игрока
-local function UpdateESPForPlayer(player)
-    local esp = ESPObjects[player]
-    if not esp then return end
-
-    local character = player.Character
-    if not character then
-        -- Скрыть всё
-        esp.Name.Visible = false
-        esp.Distance.Visible = false
-        esp.Tracer.Main.Visible = false
-        esp.Tracer.Outline.Visible = false
-        esp.HeadDot.Main.Visible = false
-        esp.HeadDot.Outline.Visible = false
-        for _, line in ipairs(esp.Box.Lines) do line.Visible = false end
-        if esp.Highlight then esp.Highlight.Enabled = false end
-        return
-    end
-
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
-
-    local screenPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-    if not onScreen then
-        -- Скрыть за экраном
-        esp.Name.Visible = false
-        esp.Distance.Visible = false
-        esp.Tracer.Main.Visible = false
-        esp.Tracer.Outline.Visible = false
-        esp.HeadDot.Main.Visible = false
-        esp.HeadDot.Outline.Visible = false
-        for _, line in ipairs(esp.Box.Lines) do line.Visible = false end
-        return
-    end
-
-    local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
-    if distance > Settings.Visuals.General.MaxDistance then
-        -- Слишком далеко
-        esp.Name.Visible = false
-        esp.Distance.Visible = false
-        esp.Tracer.Main.Visible = false
-        esp.Tracer.Outline.Visible = false
-        esp.HeadDot.Main.Visible = false
-        esp.HeadDot.Outline.Visible = false
-        for _, line in ipairs(esp.Box.Lines) do line.Visible = false end
-        return
-    end
-
-    local isEnemy = IsEnemy(player)
-
-    -- Конвертер HSV в Color3
-    local function HSVToColor(hsv)
-        return Color3.fromHSV(hsv[1] or 0, hsv[2] or 1, hsv[3] or 1)
-    end
-    local boxColor = HSVToColor(Settings.Visuals.Box.Color)
-    local nameColor = HSVToColor(Settings.Visuals.Name.Color)
-    local distanceColor = HSVToColor(Settings.Visuals.Distance.Color)
-
-    -- Box
-    if Settings.Visuals.Box.Enabled then
-        local size = Vector2.new(100, 150) * (1000 / math.max(distance, 1))
-        local pos = Vector2.new(screenPos.X, screenPos.Y) - size / 2
-        local lines = esp.Box.Lines
-        lines[1].From = pos
-        lines[1].To = pos + Vector2.new(size.X, 0)
-        lines[1].Color = boxColor
-        lines[1].Thickness = 2
-        lines[1].Visible = true
-        lines[2].From = pos + Vector2.new(size.X, 0)
-        lines[2].To = pos + size
-        lines[2].Color = boxColor
-        lines[2].Thickness = 2
-        lines[2].Visible = true
-        lines[3].From = pos + size
-        lines[3].To = pos + Vector2.new(0, size.Y)
-        lines[3].Color = boxColor
-        lines[3].Thickness = 2
-        lines[3].Visible = true
-        lines[4].From = pos + Vector2.new(0, size.Y)
-        lines[4].To = pos
-        lines[4].Color = boxColor
-        lines[4].Thickness = 2
-        lines[4].Visible = true
-    else
-        for _, line in ipairs(esp.Box.Lines) do line.Visible = false end
-    end
-
-    -- Name
-    if Settings.Visuals.Name.Enabled then
-        esp.Name.Visible = true
-        esp.Name.Text = player.Name
-        esp.Name.Color = nameColor
-        esp.Name.Position = Vector2.new(screenPos.X, screenPos.Y - 50)
-    else
-        esp.Name.Visible = false
-    end
-
-    -- Distance
-    if Settings.Visuals.Distance.Enabled then
-        esp.Distance.Visible = true
-        local unit = Settings.Visuals.Distance.Mode == "Meters" and "m" or "studs"
-        esp.Distance.Text = string.format("%.0f %s", distance, unit)
-        esp.Distance.Color = distanceColor
-        esp.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + 30)
-    else
-        esp.Distance.Visible = false
-    end
-
-    -- Tracers
-    if Settings.Visuals.Tracers.Enabled then
-        local fromPos
-        if Settings.Visuals.Tracers.Mode == "From Mouse" then
-            fromPos = UserInputService:GetMouseLocation()
-        else
-            fromPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-        end
-        local toPos = Vector2.new(screenPos.X, screenPos.Y)
-        esp.Tracer.Main.From = fromPos
-        esp.Tracer.Main.To = toPos
-        esp.Tracer.Main.Color = boxColor
-        esp.Tracer.Main.Visible = true
-        if Settings.Visuals.Tracers.Outline then
-            esp.Tracer.Outline.From = fromPos
-            esp.Tracer.Outline.To = toPos
-            esp.Tracer.Outline.Color = Color3.new(0,0,0)
-            esp.Tracer.Outline.Thickness = esp.Tracer.Main.Thickness + 2
-            esp.Tracer.Outline.Visible = true
-        else
-            esp.Tracer.Outline.Visible = false
-        end
-    else
-        esp.Tracer.Main.Visible = false
-        esp.Tracer.Outline.Visible = false
-    end
-
-    -- Head Dots
-    if Settings.Visuals.HeadDots.Enabled then
-        local head = character:FindFirstChild("Head")
-        if head then
-            local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
-            if headOnScreen then
-                local radius = Settings.Visuals.HeadDots.Size
-                if Settings.Visuals.HeadDots.Autoscale then
-                    radius = radius * (1000 / math.max(distance, 1))
-                end
-                esp.HeadDot.Main.Radius = radius
-                esp.HeadDot.Main.Position = Vector2.new(headPos.X, headPos.Y)
-                esp.HeadDot.Main.Color = boxColor
-                esp.HeadDot.Main.Filled = Settings.Visuals.HeadDots.Filled
-                esp.HeadDot.Main.Visible = true
-                if Settings.Visuals.HeadDots.Outline then
-                    esp.HeadDot.Outline.Radius = radius + 1
-                    esp.HeadDot.Outline.Position = esp.HeadDot.Main.Position
-                    esp.HeadDot.Outline.Color = Color3.new(0,0,0)
-                    esp.HeadDot.Outline.Thickness = 2
-                    esp.HeadDot.Outline.Filled = false
-                    esp.HeadDot.Outline.Visible = true
-                else
-                    esp.HeadDot.Outline.Visible = false
-                end
-            end
-        end
-    else
-        esp.HeadDot.Main.Visible = false
-        esp.HeadDot.Outline.Visible = false
-    end
-
-    -- Chams через Highlight
-    if Settings.Visuals.Chams.Enabled then
-        if not esp.Highlight then
-            esp.Highlight = Instance.new("Highlight")
-            esp.Highlight.Adornee = character
-            esp.Highlight.Parent = character
-        end
-        local chamColor = isEnemy and HSVToColor(Settings.Visuals.Chams.EnemyColor) or HSVToColor(Settings.Visuals.Chams.AllyColor)
-        esp.Highlight.FillColor = chamColor
-        esp.Highlight.OutlineColor = Settings.Visuals.Chams.Glow and Color3.new(1,1,1) or Color3.new(0,0,0)
-        esp.Highlight.FillTransparency = 0.5
-        esp.Highlight.OutlineTransparency = Settings.Visuals.Chams.Glow and 0 or 1
-        esp.Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    else
-        if esp.Highlight then
-            esp.Highlight:Destroy()
-            esp.Highlight = nil
-        end
-    end
-end
-
--- ESP для объектов
 local function CreateObjectESP(list, obj, name, position, colorFlag)
     if not obj or not position then return end
     local text = CreateText(12, true, true, 2)
@@ -897,6 +737,9 @@ if Workspace:FindFirstChild("Vehicles") then
 end
 
 -- История смертей
+local DeathHistory = {}
+local DeathCounter = 0
+
 local function OnPlayerDied(player, humanoid)
     if not Settings.Visuals.DeathHistory.Enabled then return end
     local character = player.Character
@@ -964,24 +807,19 @@ local function UpdateDeathHistory()
     end
 end
 
--- Настройка FOV кругов для RageBot
-if Settings.Rage.FOVCircle then
-    DrawingLib.SetupFOV("Rage", Window.Flags)
-end
-
--- Основной цикл ESP (Heartbeat для производительности)
+-- Цикл обновления кастомных ESP (объекты и история смертей)
 RunService.Heartbeat:Connect(function()
     if not Settings.Visuals.General.Enabled then
-        return
-    end
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer or Settings.Visuals.General.IncludeNPC then
-            if not ESPObjects[player] then
-                CreateESPForPlayer(player)
+        -- Скрываем все кастомные объекты
+        for _, list in ipairs({ItemESPObjects, QuestESPObjects, VehicleESPObjects}) do
+            for _, entry in ipairs(list) do
+                entry.text.Visible = false
             end
-            UpdateESPForPlayer(player)
         end
+        for _, entry in ipairs(DeathHistory) do
+            entry.text.Visible = false
+        end
+        return
     end
 
     UpdateObjectESP(ItemESPObjects, "ItemText")
