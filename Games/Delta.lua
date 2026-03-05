@@ -29,20 +29,20 @@ local currentJumpPower = 50
 -- UI
 -------------------------------------------------
 
-local Window = UI:CreateWindow({
+local Window = UI:New({
     Title = "Data Hub - Project Delta",
     Size = UDim2.new(0,520,0,360)
 })
 
-local PlayerTab = Window:CreateTab("Player")
-local VisualTab = Window:CreateTab("Visuals")
-local MiscTab = Window:CreateTab("Misc")
+local PlayerTab = Window:Tab("Player")
+local VisualTab = Window:Tab("Visuals")
+local MiscTab = Window:Tab("Misc")
 
 -------------------------------------------------
 -- PLAYER FUNCTIONS
 -------------------------------------------------
 
-PlayerTab:CreateSlider({
+PlayerTab:Slider({
     Name = "WalkSpeed",
     Min = 16,
     Max = 100,
@@ -57,7 +57,7 @@ PlayerTab:CreateSlider({
     end
 })
 
-PlayerTab:CreateSlider({
+PlayerTab:Slider({
     Name = "JumpPower",
     Min = 50,
     Max = 150,
@@ -96,7 +96,7 @@ end
 -- INFINITE JUMP
 -------------------------------------------------
 
-PlayerTab:CreateToggle({
+PlayerTab:Toggle({
     Name = "Infinite Jump",
 
     Callback = function(state)
@@ -156,7 +156,7 @@ local function RemoveESP(player)
     end
 end
 
-VisualTab:CreateToggle({
+VisualTab:Toggle({
     Name = "Player ESP",
 
     Callback = function(state)
@@ -212,7 +212,7 @@ table.insert(
 -- MISC
 -------------------------------------------------
 
-MiscTab:CreateButton({
+MiscTab:Button({
     Name = "Rejoin Server",
 
     Callback = function()
