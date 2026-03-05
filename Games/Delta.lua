@@ -1,6 +1,6 @@
--- Data Hub - Project Delta (Rage Edition)
+-- Data Hub - Project Delta (Ultimate Edition)
 -- Game ID: 6483626525
--- Features: RageBot, Gun Mods, Aimbot, Trigger, ESP
+-- Features: RageBot, Gun Mods, Visuals (Full Bright, Ambient, SkyBox, Inventory, Zoom)
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
@@ -19,6 +19,7 @@ local AimbotActive = false
 local TriggerActive = false
 local DoubleTapActive = false
 local RapidFireActive = false
+local ZoomActive = false
 
 -- Settings tables
 local Settings = {
@@ -27,11 +28,12 @@ local Settings = {
         DeadCheck = true,
         VisibleCheck = true,
         InstantHit = false,
-        HitParts = {"Head", "Torso", "Legs"}, -- по умолчанию все
+        HitParts = {"Head", "Torso", "Legs"},
         Distance = 300,
         FOV = 120,
         FOVCircle = true,
-        FOVColor = {1, 0, 0, 0.5, false} -- красный полупрозрачный
+        FOVColor = {1, 0, 0, 0.5, false},
+        AutoFire = false
     },
     GunMods = {
         NoRecoil = false,
@@ -44,7 +46,29 @@ local Settings = {
         RemoveBulletDrop = false,
         RemoveObstruction = false,
         DoubleTap = false,
-        RapidFire = false
+        RapidFire = false,
+        RapidFireDelay = 10 -- значение слайдера (0-20)
+    },
+    Visuals = {
+        FullBright = false,
+        RemoveGrass = false,
+        RemoveShadows = false,
+        AmbientColor = {0.5, 0.5, 0.5, 0, false}, -- серый
+        SkyBox = {
+            Moon = false
+        },
+        Inventory = {
+            Enabled = false,
+            Money = false,
+            Name = false,
+            Icons = false,
+            Moduls = false,
+            ShowAmount = 10
+        },
+        Zoom = {
+            Enabled = false,
+            Level = 20
+        }
     },
     Aimbot = {
         Enabled = false,
@@ -71,7 +95,7 @@ local Settings = {
     }
 }
 
--- Body parts for hitbox selection (мультивыбор)
+-- Body parts for hitbox selection
 local HitPartsList = {
     {Name = "Head", Mode = "Toggle", Value = true},
     {Name = "Torso", Mode = "Toggle", Value = true},
@@ -93,7 +117,7 @@ pcall(function()
     Window = DataHub.Utilities.UI:Window({
         Name = "Data Hub " .. utf8.char(8212) .. " Project Delta",
         Position = UDim2.new(0.5, -350, 0.5, -300),
-        Size = UDim2.new(0, 700, 0, 600)
+        Size = UDim2.new(0, 750, 0, 650)
     })
 end)
 if not Window then
@@ -112,7 +136,7 @@ local RageTab = Window:Tab({Name = "RageBot"}) do
             Flag = "Delta/Rage/SilentAim",
             Value = false,
             Callback = function(val) Settings.Rage.SilentAim = val end
-        }) -- без Keybind
+        })
 
         SilentSection:Toggle({Name = "Dead Check", Flag = "Delta/Rage/DeadCheck", Value = true,
             Callback = function(val) Settings.Rage.DeadCheck = val end})
@@ -121,7 +145,6 @@ local RageTab = Window:Tab({Name = "RageBot"}) do
         SilentSection:Toggle({Name = "Instant Hit", Flag = "Delta/Rage/InstantHit", Value = false,
             Callback = function(val) Settings.Rage.InstantHit = val end})
 
-        -- Hitpart selection (мультивыбор)
         SilentSection:Dropdown({
             Name = "Hit Parts",
             Flag = "Delta/Rage/HitParts",
@@ -141,7 +164,13 @@ local RageTab = Window:Tab({Name = "RageBot"}) do
             Callback = function(val) Settings.Rage.FOVColor = val end})
     end
 
-    -- FOV Circle для Rage (рисуется, если включено)
+    -- AutoFire Section (перенесён из Misc)
+    local AutoFireSection = RageTab:Section({Name = "Auto Fire", Side = "Right"}) do
+        AutoFireSection:Toggle({Name = "Enable Auto Fire", Flag = "Delta/Rage/AutoFire", Value = false,
+            Callback = function(val) Settings.Rage.AutoFire = val end})
+    end
+
+    -- FOV Circle для Rage
     if Settings.Rage.FOVCircle then
         DataHub.Utilities.Drawing.SetupFOV("Rage", Window.Flags)
     end
@@ -185,16 +214,93 @@ local GunTab = Window:Tab({Name = "Gun Mods"}) do
             Flag = "Delta/Gun/RapidFire",
             Value = false,
             Callback = function(val) Settings.GunMods.RapidFire = val end
+        }):Keybind({Flag = "Delta/Gun/RapidFireKey", Mouse = true})
+
+        ExtraSection:Slider({
+            Name = "Rapid Fire Delay (ms)",
+            Flag = "Delta/Gun/RapidFireDelay",
+            Min = 0,
+            Max = 20,
+            Value = 10,
+            Callback = function(val) Settings.GunMods.RapidFireDelay = val end
         })
     end
 end
 
 -- ███████████████████████████████████████████████████████
--- ВКЛАДКА COMBAT (старый Aimbot/Trigger)
+-- ВКЛАДКА VISUALS (расширенная)
 -- ███████████████████████████████████████████████████████
-local CombatTab = Window:Tab({Name = "Combat"}) do
+local VisualsTab = Window:Tab({Name = "Visuals"}) do
+    -- Player ESP (старая секция)
+    local ESPSection = DataHub.Utilities:ESPSection(Window, "Player ESP", "Delta/ESP", true, false, true, true, true, false) do
+        ESPSection:Colorpicker({Name = "Ally Color", Flag = "Delta/ESP/Ally", Value = {0.33, 0.66, 1, 0, false}})
+        ESPSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/ESP/Enemy", Value = {1, 0.33, 0.33, 0, false}})
+        ESPSection:Toggle({Name = "Team Check", Flag = "Delta/ESP/TeamCheck", Value = true,
+            Callback = function(val) Settings.ESP.TeamCheck = val end})
+    end
+
+    -- World Section
+    local WorldSection = VisualsTab:Section({Name = "World", Side = "Left"}) do
+        WorldSection:Toggle({Name = "Full Bright", Flag = "Delta/Visuals/FullBright", Value = false,
+            Callback = function(val) Settings.Visuals.FullBright = val end})
+        WorldSection:Toggle({Name = "Remove Grass", Flag = "Delta/Visuals/RemoveGrass", Value = false,
+            Callback = function(val) Settings.Visuals.RemoveGrass = val end})
+        WorldSection:Toggle({Name = "Remove Shadows", Flag = "Delta/Visuals/RemoveShadows", Value = false,
+            Callback = function(val) Settings.Visuals.RemoveShadows = val end})
+        WorldSection:Colorpicker({Name = "Change Ambient", Flag = "Delta/Visuals/AmbientColor",
+            Value = Settings.Visuals.AmbientColor,
+            Callback = function(val) Settings.Visuals.AmbientColor = val end})
+    end
+
+    -- SkyBox Section
+    local SkySection = VisualsTab:Section({Name = "Sky Box", Side = "Left"}) do
+        SkySection:Toggle({Name = "Moon", Flag = "Delta/Visuals/SkyBox/Moon", Value = false,
+            Callback = function(val) Settings.Visuals.SkyBox.Moon = val end})
+    end
+
+    -- Inventory Checker Section
+    local InvSection = VisualsTab:Section({Name = "Inventory Checker", Side = "Right"}) do
+        InvSection:Toggle({
+            Name = "Enable Inventory",
+            Flag = "Delta/Visuals/Inventory/Enabled",
+            Value = false,
+            Callback = function(val) Settings.Visuals.Inventory.Enabled = val end
+        }):Keybind({Flag = "Delta/Visuals/Inventory/Keybind", Mouse = true})
+
+        InvSection:Toggle({Name = "Show Money", Flag = "Delta/Visuals/Inventory/Money", Value = false,
+            Callback = function(val) Settings.Visuals.Inventory.Money = val end})
+        InvSection:Toggle({Name = "Show Name", Flag = "Delta/Visuals/Inventory/Name", Value = false,
+            Callback = function(val) Settings.Visuals.Inventory.Name = val end})
+        InvSection:Toggle({Name = "Show Icons", Flag = "Delta/Visuals/Inventory/Icons", Value = false,
+            Callback = function(val) Settings.Visuals.Inventory.Icons = val end})
+        InvSection:Toggle({Name = "Show Moduls", Flag = "Delta/Visuals/Inventory/Moduls", Value = false,
+            Callback = function(val) Settings.Visuals.Inventory.Moduls = val end})
+        InvSection:Slider({Name = "Show Amount (All Inventory)", Flag = "Delta/Visuals/Inventory/ShowAmount",
+            Min = 0, Max = 50, Value = 10,
+            Callback = function(val) Settings.Visuals.Inventory.ShowAmount = val end})
+    end
+
+    -- Zoom Section
+    local ZoomSection = VisualsTab:Section({Name = "Zoom", Side = "Right"}) do
+        ZoomSection:Toggle({
+            Name = "Enable Zoom",
+            Flag = "Delta/Visuals/Zoom/Enabled",
+            Value = false,
+            Callback = function(val) Settings.Visuals.Zoom.Enabled = val end
+        }):Keybind({Flag = "Delta/Visuals/Zoom/Keybind", Mouse = true})
+
+        ZoomSection:Slider({Name = "Zoom Level", Flag = "Delta/Visuals/Zoom/Level",
+            Min = 0, Max = 40, Value = 20,
+            Callback = function(val) Settings.Visuals.Zoom.Level = val end})
+    end
+end
+
+-- ███████████████████████████████████████████████████████
+-- ВКЛАДКА MISC (старые функции Aimbot/Trigger)
+-- ███████████████████████████████████████████████████████
+local MiscTab = Window:Tab({Name = "Misc"}) do
     -- Aimbot Section
-    local AimbotSection = CombatTab:Section({Name = "Aimbot", Side = "Left"}) do
+    local AimbotSection = MiscTab:Section({Name = "Aimbot", Side = "Left"}) do
         AimbotSection:Toggle({
             Name = "Enable Aimbot",
             Flag = "Delta/Aimbot/Enabled",
@@ -211,7 +317,7 @@ local CombatTab = Window:Tab({Name = "Combat"}) do
             Callback = function(val) Settings.Aimbot.TeamCheck = val end})
         AimbotSection:Toggle({Name = "Prediction", Flag = "Delta/Aimbot/Prediction", Value = false,
             Callback = function(val) Settings.Aimbot.Prediction = val end})
-        AimbotSection:Slider({Name = "Smoothness", Flag = "Delta/Aimbot/Smoothness", Min = 1, Max = 100, Value = 30, Unit = "%",
+        AimbotSection:Slider({Name = "Smoothness", Flag = "Delta/Aimbot/Smoothness", Min = 1, Max = 100, Value = 30,
             Callback = function(val) Settings.Aimbot.Smoothness = val end})
         AimbotSection:Slider({Name = "FOV", Flag = "Delta/Aimbot/FOV", Min = 10, Max = 360, Value = 120,
             Callback = function(val) Settings.Aimbot.FOV = val end})
@@ -231,7 +337,7 @@ local CombatTab = Window:Tab({Name = "Combat"}) do
     end
 
     -- Trigger Bot Section
-    local TriggerSection = CombatTab:Section({Name = "Trigger Bot", Side = "Right"}) do
+    local TriggerSection = MiscTab:Section({Name = "Trigger Bot", Side = "Right"}) do
         TriggerSection:Toggle({
             Name = "Enable Trigger",
             Flag = "Delta/Trigger/Enabled",
@@ -255,37 +361,12 @@ local CombatTab = Window:Tab({Name = "Combat"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- ВКЛАДКА VISUALS (ESP)
--- ███████████████████████████████████████████████████████
-local VisualsTab = Window:Tab({Name = "Visuals"}) do
-    local ESPSection = DataHub.Utilities:ESPSection(Window, "Player ESP", "Delta/ESP", true, false, true, true, true, false) do
-        ESPSection:Colorpicker({Name = "Ally Color", Flag = "Delta/ESP/Ally", Value = {0.33, 0.66, 1, 0, false}})
-        ESPSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/ESP/Enemy", Value = {1, 0.33, 0.33, 0, false}})
-        ESPSection:Toggle({Name = "Team Check", Flag = "Delta/ESP/TeamCheck", Value = true,
-            Callback = function(val) Settings.ESP.TeamCheck = val end})
-    end
-end
-
--- ███████████████████████████████████████████████████████
--- ВКЛАДКА MISC (старая, без Speed/Jump)
--- ███████████████████████████████████████████████████████
-local MiscTab = Window:Tab({Name = "Misc"}) do
-    local WeaponSection = MiscTab:Section({Name = "Weapon", Side = "Left"}) do
-        WeaponSection:Toggle({Name = "Auto Fire", Flag = "Delta/AutoFire", Value = false,
-            Callback = function(val) Settings.Misc.AutoFire = val end})
-    end
-end
-
--- ███████████████████████████████████████████████████████
 -- НАСТРОЙКИ (из утилит)
 -- ███████████████████████████████████████████████████████
 DataHub.Utilities:SettingsSection(Window, "RightShift", false)
 DataHub.Utilities.InitAutoLoad(Window)
 
 -- ███████████████████████████████████████████████████████
--- ЗАГЛУШКИ ДЛЯ ЛОГИКИ (нужно реализовать под игру)
+-- ЗАГЛУШКИ ДЛЯ ЛОГИКИ (TODO: реализовать под игру)
 -- ███████████████████████████████████████████████████████
--- TODO: добавить функции IsEnemy, GetClosestTarget, хуки для Silent Aim, модов оружия и т.д.
--- Вы можете скопировать их из предыдущей стабильной версии.
-
-print("Data Hub - Rage Edition loaded")
+print("Data Hub - Ultimate Edition loaded")
