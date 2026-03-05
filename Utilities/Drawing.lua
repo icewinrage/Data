@@ -1339,10 +1339,14 @@ function DrawingLibrary.SetupFOV(Flag, Flags)
     local FOVOutline = AddDrawing("Circle", { ZIndex = 3 })
 
     RunService.Heartbeat:Connect(function()
-        -- Проверяем, что основные флаги включены
-        local flagEnabled = GetFlag(Flags, Flag, "/Enabled")
-        local fovEnabled = GetFlag(Flags, Flag, "/FOV/Enabled")
-        local Visible = flagEnabled and fovEnabled
+        -- Безопасное получение флагов
+        local flagEnabled = false
+        local fovEnabled = false
+        if Flags then
+            flagEnabled = GetFlag(Flags, Flag, "/Enabled") or false
+            fovEnabled = GetFlag(Flags, Flag, "/FOV/Enabled") or false
+        end
+        local Visible = flagEnabled and fovEnabled  -- теперь всегда boolean
 
         FOV.Visible = Visible
         FOVOutline.Visible = Visible
@@ -1350,18 +1354,15 @@ function DrawingLibrary.SetupFOV(Flag, Flags)
         if Visible then
             local MouseLocation = UserInputService:GetMouseLocation()
 
-            -- Значения по умолчанию, если флаг не определён
-            local Thickness = GetFlag(Flags, Flag, "/FOV/Thickness") or 2
-            local NumSides = GetFlag(Flags, Flag, "/FOV/NumSides") or 30
-            local Filled = GetFlag(Flags, Flag, "/FOV/Filled") or false
-            local Radius = GetFlag(Flags, Flag, "/FOV/Radius") or 100
-            local Color = GetFlag(Flags, Flag, "/FOV/Color") or {1, 1, 1, 0, false, Color3.new(1, 1, 1)}
+            local Thickness = (Flags and GetFlag(Flags, Flag, "/FOV/Thickness")) or 2
+            local NumSides = (Flags and GetFlag(Flags, Flag, "/FOV/NumSides")) or 30
+            local Filled = (Flags and GetFlag(Flags, Flag, "/FOV/Filled")) or false
+            local Radius = (Flags and GetFlag(Flags, Flag, "/FOV/Radius")) or 100
+            local Color = (Flags and GetFlag(Flags, Flag, "/FOV/Color")) or {1, 1, 1, 0, false, Color3.new(1, 1, 1)}
 
-            -- Извлекаем прозрачность и цвет с защитой от nil
             local Transparency = 1 - (Color[4] or 0)
             local ColorValue = Color[6] or Color3.new(1, 1, 1)
 
-            -- Применяем к основному кругу
             FOV.Color = ColorValue
             FOV.Transparency = Transparency
             FOV.Thickness = Thickness
@@ -1370,7 +1371,6 @@ function DrawingLibrary.SetupFOV(Flag, Flags)
             FOV.Radius = Radius
             FOV.Position = MouseLocation
 
-            -- Для обводки (outline) добавляем +2 к толщине
             FOVOutline.Color = ColorValue
             FOVOutline.Transparency = Transparency
             FOVOutline.Thickness = Thickness + 2
@@ -1845,4 +1845,5 @@ end)
 end)]]
 
 return DrawingLibrary
+
 
