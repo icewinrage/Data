@@ -1,4 +1,4 @@
---// Data Hub Loader PRO
+--// Data Hub Ultimate Loader
 
 if getgenv().DataHub and getgenv().DataHub.Loaded then
     return
@@ -11,23 +11,35 @@ local LocalPlayer = Players.LocalPlayer
 
 local BASE_URL = "https://raw.githubusercontent.com/icewinrage/Data/main/"
 
+-- кеш
+local CACHE = {}
+
 -- безопасный http
 local function httpget(url)
+
+    if CACHE[url] then
+        return CACHE[url]
+    end
+
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
 
-    if not success then
-        warn("Failed to load: "..url)
+    if not success or not result then
+        warn("HTTP FAILED:", url)
         return nil
     end
 
+    CACHE[url] = result
     return result
 end
 
--- безопасный loadstring
-local function loadmodule(url,name)
+-- загрузка модулей
+local function loadmodule(path,name)
+
+    local url = BASE_URL .. path
     local src = httpget(url)
+
     if not src then
         error("Cannot load "..name)
     end
@@ -45,6 +57,8 @@ end
 local DataHub = {
     Loaded = false,
     Utilities = {},
+    Cache = CACHE,
+
     Games = {
         ["1168263273"] = {Name="Bad Business", Script="BB"},
         ["3360073263"] = {Name="Bad Business PTR", Script="BB"},
@@ -63,10 +77,10 @@ local DataHub = {
 getgenv().DataHub = DataHub
 
 -- загрузка utilities
-DataHub.Utilities.Main = loadmodule(BASE_URL.."Utilities/Main.lua","Main")
-DataHub.Utilities.UI = loadmodule(BASE_URL.."Utilities/UI.lua","UI")
-DataHub.Utilities.Physics = loadmodule(BASE_URL.."Utilities/Physics.lua","Physics")
-DataHub.Utilities.Drawing = loadmodule(BASE_URL.."Utilities/Drawing.lua","Drawing")
+DataHub.Utilities.Main = loadmodule("Utilities/Main.lua","Main")
+DataHub.Utilities.UI = loadmodule("Utilities/UI.lua","UI")
+DataHub.Utilities.Physics = loadmodule("Utilities/Physics.lua","Physics")
+DataHub.Utilities.Drawing = loadmodule("Utilities/Drawing.lua","Drawing")
 
 -- курсор
 DataHub.Cursor = httpget(BASE_URL.."Utilities/ArrowCursor.png")
@@ -74,15 +88,19 @@ DataHub.Cursor = httpget(BASE_URL.."Utilities/ArrowCursor.png")
 -- loadstring для телепорта
 DataHub.Loadstring = httpget(BASE_URL.."Utilities/Loadstring")
 
--- телепорт
+-- teleport поддержка
 local queue = queue_on_teleport
 
 if queue then
+
     LocalPlayer.OnTeleport:Connect(function(state)
+
         if state == Enum.TeleportState.InProgress then
             queue(DataHub.Loadstring)
         end
+
     end)
+
 end
 
 -- определяем игру
@@ -92,14 +110,14 @@ local gameinfo = DataHub.Games[id]
 if gameinfo then
 
     loadmodule(
-        BASE_URL.."Games/"..gameinfo.Script..".lua",
+        "Games/"..gameinfo.Script..".lua",
         gameinfo.Script
     )
 
 else
 
     loadmodule(
-        BASE_URL.."Universal.lua",
+        "Universal.lua",
         "Universal"
     )
 
@@ -109,9 +127,11 @@ DataHub.Loaded = true
 
 -- уведомление
 if DataHub.Utilities.UI then
+
     DataHub.Utilities.UI:Push({
         Title = "Data Hub",
         Description = (gameinfo and gameinfo.Name or "Universal").." loaded",
         Duration = 10
     })
+
 end
