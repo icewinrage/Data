@@ -58,7 +58,7 @@ getgenv().Parvus = {
         ["358276974" ] = { Name = "Apocalypse Rising 2",        Script = "Games/AR2"  },
         ["3495983524"] = { Name = "Apocalypse Rising 2 Dev.",   Script = "Games/AR2"  },
         ["1054526971"] = { Name = "Blackhawk Rescue Mission 5", Script = "Games/BRM5" },
-		["6483626525"] = { Name = "Project Delta",              Script = "Delta"      }
+		["6483626525"] = { Name = "Project Delta",              Script = "Games/Delta" }
     }
 }
 
@@ -89,3 +89,4 @@ Parvus.Utilities.UI:Push({
     Description = Parvus.Game.Name .. " loaded!\n\nThis script is open sourced\nIf you have paid for this script\nOr had to go thru ads\nYou have been scammed.",
     Duration = NotificationTime
 })
+
