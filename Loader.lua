@@ -1,93 +1,118 @@
-repeat task.wait() until game.IsLoaded
-repeat task.wait() until game.GameId ~= 0
 
-if Parvus and Parvus.Loaded then
-    Parvus.Utilities.UI:Push({
-        Title = "Data Hub",
-        Description = "Script already running!",
-        Duration = 5
-    }) return
+--// Data Hub Loader PRO
+
+if getgenv().DataHub and getgenv().DataHub.Loaded then
+    return
 end
 
---[[if Parvus and (Parvus.Game and not Parvus.Loaded) then
-    Parvus.Utilities.UI:Push({
-        Title = "Parvus Hub",
-        Description = "Something went wrong!",
-        Duration = 5
-    }) return
-end]]
+repeat task.wait() until game:IsLoaded()
 
-local PlayerService = game:GetService("Players")
-repeat task.wait() until PlayerService.LocalPlayer
-local LocalPlayer = PlayerService.LocalPlayer
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
-local Branch, NotificationTime, IsLocal = ...
---local ClearTeleportQueue = clear_teleport_queue
-local QueueOnTeleport = queue_on_teleport
+local BASE_URL = "https://raw.githubusercontent.com/icewinrage/Data/main/"
 
-local function GetFile(File)
-    return IsLocal and readfile("Parvus/" .. File)
-    or game:HttpGet(("%s%s"):format(Parvus.Source, File))
-end
+-- безопасный http
+local function httpget(url)
+    local success, result = pcall(function()
+        return game:HttpGet(url)
+    end)
 
-local function LoadScript(Script)
-    return loadstring(GetFile(Script .. ".lua"), Script)()
-end
-
-local function GetGameInfo()
-    for Id, Info in pairs(Parvus.Games) do
-        if tostring(game.GameId) == Id then
-            return Info
-        end
+    if not success then
+        warn("Failed to load: "..url)
+        return nil
     end
 
-    return Parvus.Games.Universal
+    return result
 end
 
-getgenv().Parvus = {
-    Source = "https://raw.githubusercontent.com/icewinrage/Data/main/" .. Branch .. "/",
+-- безопасный loadstring
+local function loadmodule(url,name)
+    local src = httpget(url)
+    if not src then
+        error("Cannot load "..name)
+    end
 
+    local fn,err = loadstring(src,name)
+
+    if not fn then
+        error(err)
+    end
+
+    return fn()
+end
+
+-- глобальная таблица
+local DataHub = {
+    Loaded = false,
+    Utilities = {},
     Games = {
-        ["Universal" ] = { Name = "Universal",                  Script = "Universal"  },
-        ["1168263273"] = { Name = "Bad Business",               Script = "Games/BB"   },
-        ["3360073263"] = { Name = "Bad Business PTR",           Script = "Games/BB"   },
-        ["1586272220"] = { Name = "Steel Titans",               Script = "Games/ST"   },
-        ["807930589" ] = { Name = "The Wild West",              Script = "Games/TWW"  },
-        ["580765040" ] = { Name = "RAGDOLL UNIVERSE",           Script = "Games/RU"   },
-        ["187796008" ] = { Name = "Those Who Remain",           Script = "Games/TWR"  },
-        ["358276974" ] = { Name = "Apocalypse Rising 2",        Script = "Games/AR2"  },
-        ["3495983524"] = { Name = "Apocalypse Rising 2 Dev.",   Script = "Games/AR2"  },
-        ["1054526971"] = { Name = "Blackhawk Rescue Mission 5", Script = "Games/BRM5" },
-		["2862098693"] = { Name = "Project Delta",              Script = "Games/Delta" }
+        ["1168263273"] = {Name="Bad Business", Script="BB"},
+        ["3360073263"] = {Name="Bad Business PTR", Script="BB"},
+        ["1586272220"] = {Name="Steel Titans", Script="ST"},
+        ["807930589"]  = {Name="The Wild West", Script="TWW"},
+        ["580765040"]  = {Name="RAGDOLL UNIVERSE", Script="RU"},
+        ["187796008"]  = {Name="Those Who Remain", Script="TWR"},
+        ["358276974"]  = {Name="Apocalypse Rising 2", Script="AR2"},
+        ["3495983524"] = {Name="Apocalypse Rising 2 Dev", Script="AR2"},
+        ["1054526971"] = {Name="Blackhawk Rescue Mission 5", Script="BRM5"},
+        ["1793802713"] = {Name="Deadline", Script="DL"},
+        ["2862098693"] = {Name="Project Delta", Script="Delta"}
     }
 }
 
-Parvus.Utilities = LoadScript("Utilities/Main")
-Parvus.Utilities.UI = LoadScript("Utilities/UI")
-Parvus.Utilities.Physics = LoadScript("Utilities/Physics")
-Parvus.Utilities.Drawing = LoadScript("Utilities/Drawing")
+getgenv().DataHub = DataHub
 
-Parvus.Cursor = GetFile("Utilities/ArrowCursor.png")
-Parvus.Loadstring = GetFile("Utilities/Loadstring")
-Parvus.Loadstring = Parvus.Loadstring:format(
-    Parvus.Source, Branch, NotificationTime, tostring(IsLocal)
-)
+-- загрузка utilities
+DataHub.Utilities.Main = loadmodule(BASE_URL.."Utilities/Main.lua","Main")
+DataHub.Utilities.UI = loadmodule(BASE_URL.."Utilities/UI.lua","UI")
+DataHub.Utilities.Physics = loadmodule(BASE_URL.."Utilities/Physics.lua","Physics")
+DataHub.Utilities.Drawing = loadmodule(BASE_URL.."Utilities/Drawing.lua","Drawing")
 
-LocalPlayer.OnTeleport:Connect(function(State)
-    if State == Enum.TeleportState.InProgress then
-        --ClearTeleportQueue()
-        QueueOnTeleport(Parvus.Loadstring)
-    end
-end)
+-- курсор
+DataHub.Cursor = httpget(BASE_URL.."Utilities/ArrowCursor.png")
 
-Parvus.Game = GetGameInfo()
-LoadScript(Parvus.Game.Script)
-Parvus.Loaded = true
+-- loadstring для телепорта
+DataHub.Loadstring = httpget(BASE_URL.."Utilities/Loadstring")
 
-Parvus.Utilities.UI:Push({
-    Title = "DataHub",
-    Description = Parvus.Game.Name .. " loaded!\n\nThis script is open sourced\nIf you have paid for this script\nOr had to go thru ads\nYou have been scammed.",
-    Duration = NotificationTime
-})
+-- телепорт
+local queue = queue_on_teleport
 
+if queue then
+    LocalPlayer.OnTeleport:Connect(function(state)
+        if state == Enum.TeleportState.InProgress then
+            queue(DataHub.Loadstring)
+        end
+    end)
+end
 
+-- определяем игру
+local id = tostring(game.GameId)
+local gameinfo = DataHub.Games[id]
+
+if gameinfo then
+
+    loadmodule(
+        BASE_URL.."Games/"..gameinfo.Script..".lua",
+        gameinfo.Script
+    )
+
+else
+
+    loadmodule(
+        BASE_URL.."Universal.lua",
+        "Universal"
+    )
+
+end
+
+DataHub.Loaded = true
+
+-- уведомление
+if DataHub.Utilities.UI then
+    DataHub.Utilities.UI:Push({
+        Title = "Data Hub",
+        Description = (gameinfo and gameinfo.Name or "Universal").." loaded",
+        Duration = 10
+    })
+end
