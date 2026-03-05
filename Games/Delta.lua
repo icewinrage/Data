@@ -1,6 +1,6 @@
--- Data Hub - Project Delta (Final with Standard ESP)
+-- Data Hub - Project Delta (Final Edition with Full Toggles)
 -- Game ID: 2862098693
--- Features: Full ESP (players via library), RageBot, Gun Mods, World, Misc, Anti-UAC
+-- Features: Full ESP (players via library with global toggle), RageBot, Gun Mods, World, Misc, Anti-UAC
 
 -- Сервисы
 local UserInputService = game:GetService("UserInputService")
@@ -56,7 +56,7 @@ local Settings = {
     },
     Visuals = {
         General = {
-            Enabled = false,
+            Enabled = false,          -- общий включатель ESP
             IncludeNPC = false,
             ScaleType = "Dynamic",
             MaxDistance = 1000
