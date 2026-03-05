@@ -1,9 +1,5 @@
--- Data Hub - Project Delta (Final, Fully Functional)
--- PlaceId: 7336302630
--- Features: Full ESP, RageBot, Gun Mods, World, Misc, Anti-UAC
--- Optimized: reads real health/weapon from GameplayVariables, uses Heartbeat for ESP, pcall error handling
+_G.LoadFromUrl = function(u) return loadstring(game:HttpGet(u))() end
 
--- Services
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
