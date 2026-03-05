@@ -1,6 +1,6 @@
 -- Data Hub - Project Delta (Ultimate Edition)
 -- Game ID: 6483626525
--- Features: RageBot, Gun Mods, Visuals (Full Bright, Ambient, SkyBox, Inventory, Zoom)
+-- Features: RageBot, Gun Mods, Visuals (Full ESP), PlayerList
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
@@ -21,7 +21,7 @@ local DoubleTapActive = false
 local RapidFireActive = false
 local ZoomActive = false
 
--- Settings tables
+-- Settings tables (будут обновляться через UI)
 local Settings = {
     Rage = {
         SilentAim = false,
@@ -47,28 +47,66 @@ local Settings = {
         RemoveObstruction = false,
         DoubleTap = false,
         RapidFire = false,
-        RapidFireDelay = 10 -- значение слайдера (0-20)
+        RapidFireDelay = 10
     },
     Visuals = {
-        FullBright = false,
-        RemoveGrass = false,
-        RemoveShadows = false,
-        AmbientColor = {0.5, 0.5, 0.5, 0, false}, -- серый
-        SkyBox = {
-            Moon = false
-        },
-        Inventory = {
+        General = {
             Enabled = false,
-            Money = false,
-            Name = false,
-            Icons = false,
-            Moduls = false,
-            ShowAmount = 10
+            IncludeNPC = false,
+            ScaleType = "Dynamic"
         },
-        Zoom = {
+        Box = {
             Enabled = false,
-            Level = 20
-        }
+            Color = {1, 1, 1, 0, false}, -- white
+            Style = "Full"
+        },
+        Name = {
+            Enabled = false,
+            Color = {1, 1, 1, 0, false}
+        },
+        Tracers = {
+            Enabled = false,
+            Outline = false,
+            Mode = "From Bottom"
+        },
+        Distance = {
+            Enabled = false,
+            Color = {1, 1, 1, 0, false},
+            Mode = "Studs"
+        },
+        Health = {
+            Bar = false,
+            ColorMode = "Green" -- Red, Green, RGB
+        },
+        Chams = {
+            Enabled = false,
+            AllyColor = {0, 1, 0, 0, false}, -- green
+            EnemyColor = {1, 0, 0, 0, false}, -- red
+            Glow = false
+        },
+        OffscreenArrows = {
+            Enabled = false,
+            Filled = true,
+            Outline = true,
+            Width = 14,
+            Height = 28,
+            Radius = 150,
+            Thickness = 1,
+            Transparency = 0
+        },
+        ItemText = {
+            Enabled = false,
+            Color = {1, 1, 1, 0, false},
+            Distance = 100
+        },
+        HeadDots = {
+            Enabled = false,
+            Filled = true,
+            Outline = true,
+            Autoscale = true,
+            Size = 4
+        },
+        DeathHistory = false
     },
     Aimbot = {
         Enabled = false,
@@ -83,15 +121,6 @@ local Settings = {
         Enabled = false,
         Delay = 0.1,
         FOV = 30
-    },
-    ESP = {
-        Enabled = false,
-        TeamCheck = true,
-        Boxes = true,
-        Names = true,
-        Distance = true,
-        Health = true,
-        Tracers = false
     }
 }
 
@@ -116,8 +145,8 @@ local Window = nil
 pcall(function()
     Window = DataHub.Utilities.UI:Window({
         Name = "Data Hub " .. utf8.char(8212) .. " Project Delta",
-        Position = UDim2.new(0.5, -350, 0.5, -300),
-        Size = UDim2.new(0, 750, 0, 650)
+        Position = UDim2.new(0.5, -400, 0.5, -350),
+        Size = UDim2.new(0, 800, 0, 700)
     })
 end)
 if not Window then
@@ -164,10 +193,19 @@ local RageTab = Window:Tab({Name = "RageBot"}) do
             Callback = function(val) Settings.Rage.FOVColor = val end})
     end
 
-    -- AutoFire Section (перенесён из Misc)
+    -- AutoFire Section
     local AutoFireSection = RageTab:Section({Name = "Auto Fire", Side = "Right"}) do
         AutoFireSection:Toggle({Name = "Enable Auto Fire", Flag = "Delta/Rage/AutoFire", Value = false,
             Callback = function(val) Settings.Rage.AutoFire = val end})
+    end
+
+    -- PlayerList Section (заглушка)
+    local PlayerListSection = RageTab:Section({Name = "Player List", Side = "Right"}) do
+        PlayerListSection:Label({Text = "Player list will be displayed here."})
+        PlayerListSection:Button({Name = "Refresh List", Callback = function()
+            print("Refreshing player list...")
+            -- TODO: actual player list logic
+        end})
     end
 
     -- FOV Circle для Rage
@@ -228,75 +266,148 @@ local GunTab = Window:Tab({Name = "Gun Mods"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- ВКЛАДКА VISUALS (расширенная)
+-- ВКЛАДКА VISUALS (расширенная ESP)
 -- ███████████████████████████████████████████████████████
 local VisualsTab = Window:Tab({Name = "Visuals"}) do
-    -- Player ESP (старая секция)
-    local ESPSection = DataHub.Utilities:ESPSection(Window, "Player ESP", "Delta/ESP", true, false, true, true, true, false) do
-        ESPSection:Colorpicker({Name = "Ally Color", Flag = "Delta/ESP/Ally", Value = {0.33, 0.66, 1, 0, false}})
-        ESPSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/ESP/Enemy", Value = {1, 0.33, 0.33, 0, false}})
-        ESPSection:Toggle({Name = "Team Check", Flag = "Delta/ESP/TeamCheck", Value = true,
-            Callback = function(val) Settings.ESP.TeamCheck = val end})
+    -- General Section
+    local GeneralSection = VisualsTab:Section({Name = "General", Side = "Left"}) do
+        GeneralSection:Toggle({Name = "ESP Enabled", Flag = "Delta/Visuals/General/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.General.Enabled = val end})
+        GeneralSection:Toggle({Name = "Include NPC", Flag = "Delta/Visuals/General/IncludeNPC", Value = false,
+            Callback = function(val) Settings.Visuals.General.IncludeNPC = val end})
+        GeneralSection:Dropdown({Name = "Scale Type", Flag = "Delta/Visuals/General/ScaleType", List = {
+            {Name = "Static", Mode = "Button", Value = false},
+            {Name = "Dynamic", Mode = "Button", Value = true},
+            {Name = "Bounding", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.General.ScaleType = selected[1] end})
     end
 
-    -- World Section
-    local WorldSection = VisualsTab:Section({Name = "World", Side = "Left"}) do
-        WorldSection:Toggle({Name = "Full Bright", Flag = "Delta/Visuals/FullBright", Value = false,
-            Callback = function(val) Settings.Visuals.FullBright = val end})
-        WorldSection:Toggle({Name = "Remove Grass", Flag = "Delta/Visuals/RemoveGrass", Value = false,
-            Callback = function(val) Settings.Visuals.RemoveGrass = val end})
-        WorldSection:Toggle({Name = "Remove Shadows", Flag = "Delta/Visuals/RemoveShadows", Value = false,
-            Callback = function(val) Settings.Visuals.RemoveShadows = val end})
-        WorldSection:Colorpicker({Name = "Change Ambient", Flag = "Delta/Visuals/AmbientColor",
-            Value = Settings.Visuals.AmbientColor,
-            Callback = function(val) Settings.Visuals.AmbientColor = val end})
+    -- Box Section
+    local BoxSection = VisualsTab:Section({Name = "Box", Side = "Left"}) do
+        BoxSection:Toggle({Name = "Box", Flag = "Delta/Visuals/Box/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Box.Enabled = val end})
+        BoxSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Box/Color", Value = Settings.Visuals.Box.Color,
+            Callback = function(val) Settings.Visuals.Box.Color = val end})
+        BoxSection:Toggle({Name = "Basic White", Flag = "Delta/Visuals/Box/BasicWhite", Value = false,
+            Callback = function(val)
+                if val then
+                    Settings.Visuals.Box.Color = {1, 1, 1, 0, false}
+                end
+            end})
+        BoxSection:Dropdown({Name = "Style", Flag = "Delta/Visuals/Box/Style", List = {
+            {Name = "Full", Mode = "Button", Value = true},
+            {Name = "Corner", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Box.Style = selected[1] end})
     end
 
-    -- SkyBox Section
-    local SkySection = VisualsTab:Section({Name = "Sky Box", Side = "Left"}) do
-        SkySection:Toggle({Name = "Moon", Flag = "Delta/Visuals/SkyBox/Moon", Value = false,
-            Callback = function(val) Settings.Visuals.SkyBox.Moon = val end})
+    -- Name Section
+    local NameSection = VisualsTab:Section({Name = "Name", Side = "Left"}) do
+        NameSection:Toggle({Name = "Nametag", Flag = "Delta/Visuals/Name/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Name.Enabled = val end})
+        NameSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Name/Color", Value = Settings.Visuals.Name.Color,
+            Callback = function(val) Settings.Visuals.Name.Color = val end})
     end
 
-    -- Inventory Checker Section
-    local InvSection = VisualsTab:Section({Name = "Inventory Checker", Side = "Right"}) do
-        InvSection:Toggle({
-            Name = "Enable Inventory",
-            Flag = "Delta/Visuals/Inventory/Enabled",
-            Value = false,
-            Callback = function(val) Settings.Visuals.Inventory.Enabled = val end
-        }):Keybind({Flag = "Delta/Visuals/Inventory/Keybind", Mouse = true})
-
-        InvSection:Toggle({Name = "Show Money", Flag = "Delta/Visuals/Inventory/Money", Value = false,
-            Callback = function(val) Settings.Visuals.Inventory.Money = val end})
-        InvSection:Toggle({Name = "Show Name", Flag = "Delta/Visuals/Inventory/Name", Value = false,
-            Callback = function(val) Settings.Visuals.Inventory.Name = val end})
-        InvSection:Toggle({Name = "Show Icons", Flag = "Delta/Visuals/Inventory/Icons", Value = false,
-            Callback = function(val) Settings.Visuals.Inventory.Icons = val end})
-        InvSection:Toggle({Name = "Show Moduls", Flag = "Delta/Visuals/Inventory/Moduls", Value = false,
-            Callback = function(val) Settings.Visuals.Inventory.Moduls = val end})
-        InvSection:Slider({Name = "Show Amount (All Inventory)", Flag = "Delta/Visuals/Inventory/ShowAmount",
-            Min = 0, Max = 50, Value = 10,
-            Callback = function(val) Settings.Visuals.Inventory.ShowAmount = val end})
+    -- Tracers Section
+    local TracersSection = VisualsTab:Section({Name = "Tracers", Side = "Left"}) do
+        TracersSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Tracers/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Tracers.Enabled = val end})
+        TracersSection:Toggle({Name = "Outline", Flag = "Delta/Visuals/Tracers/Outline", Value = false,
+            Callback = function(val) Settings.Visuals.Tracers.Outline = val end})
+        TracersSection:Dropdown({Name = "Mode", Flag = "Delta/Visuals/Tracers/Mode", List = {
+            {Name = "From Bottom", Mode = "Button", Value = true},
+            {Name = "From Mouse", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Tracers.Mode = selected[1] end})
     end
 
-    -- Zoom Section
-    local ZoomSection = VisualsTab:Section({Name = "Zoom", Side = "Right"}) do
-        ZoomSection:Toggle({
-            Name = "Enable Zoom",
-            Flag = "Delta/Visuals/Zoom/Enabled",
-            Value = false,
-            Callback = function(val) Settings.Visuals.Zoom.Enabled = val end
-        }):Keybind({Flag = "Delta/Visuals/Zoom/Keybind", Mouse = true})
+    -- Distance Section
+    local DistanceSection = VisualsTab:Section({Name = "Distance", Side = "Left"}) do
+        DistanceSection:Toggle({Name = "Distance", Flag = "Delta/Visuals/Distance/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Distance.Enabled = val end})
+        DistanceSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Distance/Color", Value = Settings.Visuals.Distance.Color,
+            Callback = function(val) Settings.Visuals.Distance.Color = val end})
+        DistanceSection:Dropdown({Name = "Mode", Flag = "Delta/Visuals/Distance/Mode", List = {
+            {Name = "Studs", Mode = "Button", Value = true},
+            {Name = "Meters", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Distance.Mode = selected[1] end})
+    end
 
-        ZoomSection:Slider({Name = "Zoom Level", Flag = "Delta/Visuals/Zoom/Level",
-            Min = 0, Max = 40, Value = 20,
-            Callback = function(val) Settings.Visuals.Zoom.Level = val end})
+    -- Health Section
+    local HealthSection = VisualsTab:Section({Name = "Health", Side = "Right"}) do
+        HealthSection:Toggle({Name = "Health Bar", Flag = "Delta/Visuals/Health/Bar", Value = false,
+            Callback = function(val) Settings.Visuals.Health.Bar = val end})
+        HealthSection:Dropdown({Name = "Color Mode", Flag = "Delta/Visuals/Health/ColorMode", List = {
+            {Name = "Red", Mode = "Button", Value = false},
+            {Name = "Green", Mode = "Button", Value = true},
+            {Name = "RGB", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Health.ColorMode = selected[1] end})
+    end
+
+    -- Chams Section
+    local ChamsSection = VisualsTab:Section({Name = "Chams", Side = "Right"}) do
+        ChamsSection:Toggle({Name = "Chams", Flag = "Delta/Visuals/Chams/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Chams.Enabled = val end})
+        ChamsSection:Colorpicker({Name = "Ally Color", Flag = "Delta/Visuals/Chams/AllyColor", Value = Settings.Visuals.Chams.AllyColor,
+            Callback = function(val) Settings.Visuals.Chams.AllyColor = val end})
+        ChamsSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/Visuals/Chams/EnemyColor", Value = Settings.Visuals.Chams.EnemyColor,
+            Callback = function(val) Settings.Visuals.Chams.EnemyColor = val end})
+        ChamsSection:Toggle({Name = "Glow", Flag = "Delta/Visuals/Chams/Glow", Value = false,
+            Callback = function(val) Settings.Visuals.Chams.Glow = val end})
+    end
+
+    -- Offscreen Arrows Section
+    local ArrowsSection = VisualsTab:Section({Name = "Offscreen Arrows", Side = "Right"}) do
+        ArrowsSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Arrows/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.OffscreenArrows.Enabled = val end})
+        ArrowsSection:Toggle({Name = "Filled", Flag = "Delta/Visuals/Arrows/Filled", Value = true,
+            Callback = function(val) Settings.Visuals.OffscreenArrows.Filled = val end})
+        ArrowsSection:Toggle({Name = "Outline", Flag = "Delta/Visuals/Arrows/Outline", Value = true,
+            Callback = function(val) Settings.Visuals.OffscreenArrows.Outline = val end})
+        ArrowsSection:Slider({Name = "Width", Flag = "Delta/Visuals/Arrows/Width", Min = 8, Max = 40, Value = 14,
+            Callback = function(val) Settings.Visuals.OffscreenArrows.Width = val end})
+        ArrowsSection:Slider({Name = "Height", Flag = "Delta/Visuals/Arrows/Height", Min = 8, Max = 40, Value = 28,
+            Callback = function(val) Settings.Visuals.OffscreenArrows.Height = val end})
+        ArrowsSection:Slider({Name = "Distance from Center", Flag = "Delta/Visuals/Arrows/Radius", Min = 50, Max = 300, Value = 150,
+            Callback = function(val) Settings.Visuals.OffscreenArrows.Radius = val end})
+        ArrowsSection:Slider({Name = "Thickness", Flag = "Delta/Visuals/Arrows/Thickness", Min = 1, Max = 10, Value = 1,
+            Callback = function(val) Settings.Visuals.OffscreenArrows.Thickness = val end})
+        ArrowsSection:Slider({Name = "Transparency", Flag = "Delta/Visuals/Arrows/Transparency", Min = 0, Max = 1, Precise = 2, Value = 0,
+            Callback = function(val) Settings.Visuals.OffscreenArrows.Transparency = val end})
+    end
+
+    -- Item Text Section
+    local ItemTextSection = VisualsTab:Section({Name = "Item Text", Side = "Right"}) do
+        ItemTextSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/ItemText/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.ItemText.Enabled = val end})
+        ItemTextSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/ItemText/Color", Value = Settings.Visuals.ItemText.Color,
+            Callback = function(val) Settings.Visuals.ItemText.Color = val end})
+        ItemTextSection:Slider({Name = "Distance", Flag = "Delta/Visuals/ItemText/Distance", Min = 30, Max = 1000, Value = 100,
+            Callback = function(val) Settings.Visuals.ItemText.Distance = val end})
+    end
+
+    -- Head Dots Section
+    local HeadDotsSection = VisualsTab:Section({Name = "Head Dots", Side = "Right"}) do
+        HeadDotsSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/HeadDots/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.HeadDots.Enabled = val end})
+        HeadDotsSection:Toggle({Name = "Filled", Flag = "Delta/Visuals/HeadDots/Filled", Value = true,
+            Callback = function(val) Settings.Visuals.HeadDots.Filled = val end})
+        HeadDotsSection:Toggle({Name = "Outline", Flag = "Delta/Visuals/HeadDots/Outline", Value = true,
+            Callback = function(val) Settings.Visuals.HeadDots.Outline = val end})
+        HeadDotsSection:Toggle({Name = "Autoscale", Flag = "Delta/Visuals/HeadDots/Autoscale", Value = true,
+            Callback = function(val) Settings.Visuals.HeadDots.Autoscale = val end})
+        HeadDotsSection:Slider({Name = "Size", Flag = "Delta/Visuals/HeadDots/Size", Min = 1, Max = 20, Value = 4,
+            Callback = function(val) Settings.Visuals.HeadDots.Size = val end})
+    end
+
+    -- Death History Section
+    local DeathSection = VisualsTab:Section({Name = "Death History", Side = "Right"}) do
+        DeathSection:Toggle({Name = "Death History ESP", Flag = "Delta/Visuals/DeathHistory", Value = false,
+            Callback = function(val) Settings.Visuals.DeathHistory = val end})
     end
 end
 
 -- ███████████████████████████████████████████████████████
--- ВКЛАДКА MISC (старые функции Aimbot/Trigger)
+-- ВКЛАДКА MISC (Aimbot, Trigger)
 -- ███████████████████████████████████████████████████████
 local MiscTab = Window:Tab({Name = "Misc"}) do
     -- Aimbot Section
@@ -370,3 +481,4 @@ DataHub.Utilities.InitAutoLoad(Window)
 -- ЗАГЛУШКИ ДЛЯ ЛОГИКИ (TODO: реализовать под игру)
 -- ███████████████████████████████████████████████████████
 print("Data Hub - Ultimate Edition loaded")
+print("Interface ready. Implement game-specific logic for features to work.")
