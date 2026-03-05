@@ -1339,7 +1339,7 @@ function DrawingLibrary.SetupFOV(Flag, Flags)
     local FOVOutline = AddDrawing("Circle", { ZIndex = 3 })
 
     RunService.Heartbeat:Connect(function()
-        -- Безопасное получение флагов
+        -- Безопасное получение флагов с приведением к boolean
         local flagEnabled = false
         local fovEnabled = false
         if Flags then
@@ -1845,5 +1845,6 @@ end)
 end)]]
 
 return DrawingLibrary
+
 
 
