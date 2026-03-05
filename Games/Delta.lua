@@ -1,5 +1,10 @@
-_G.LoadFromUrl = function(u) return loadstring(game:HttpGet(u))() end
+-- Data Hub - Project Delta (Final, Fully Autonomous)
+-- PlaceId: 7336302630
+-- Features: Full ESP, RageBot, Gun Mods, World, Misc, Anti-UAC
+-- Optimized: reads real health/weapon from GameplayVariables, uses Heartbeat for ESP, pcall error handling
+-- Includes fallback loading of Drawing library if DataHub fails
 
+-- Services
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -220,10 +225,7 @@ local RageTab = Window:Tab({Name = "RageBot"}) do
         end})
     end
 
-    -- FOV Circle for Rage
-    if Settings.Rage.FOVCircle then
-        DataHub.Utilities.Drawing.SetupFOV("Rage", Window.Flags)
-    end
+    -- FOV Circle for Rage (will be set up after DrawingLib is loaded)
 end
 
 -- ███████████████████████████████████████████████████████
@@ -585,7 +587,50 @@ end
 
 -- ███████████████████████████████████████████████████████
 -- ESP IMPLEMENTATION (optimized with Heartbeat)
+-- Includes fallback loading of Drawing library
 -- ███████████████████████████████████████████████████████
+
+-- Load Drawing library (from DataHub or directly)
+local DrawingLib = nil
+if DataHub and DataHub.Utilities and DataHub.Utilities.Drawing then
+    DrawingLib = DataHub.Utilities.Drawing
+    print("Drawing library loaded from DataHub")
+else
+    print("Drawing library not found in DataHub, loading directly...")
+    local success, result = pcall(function()
+        local url = "https://raw.githubusercontent.com/icewinrage/Data/refs/heads/main/Utilities/Drawing.lua"
+        local content = game:HttpGet(url)
+        if not content or content == "" then
+            error("Failed to download Drawing.lua")
+        end
+        local fn, err = loadstring(content, "Drawing.lua")
+        if not fn then
+            error("Compilation error: " .. err)
+        end
+        return fn()
+    end)
+    if success then
+        DrawingLib = result
+        print("Drawing library loaded directly")
+    else
+        warn("Failed to load Drawing library:", result)
+        -- Create a dummy library to avoid nil errors
+        DrawingLib = {
+            AddDrawing = function(type, props)
+                warn("Drawing not loaded, cannot create", type)
+                return setmetatable({}, {__index = function() return function() end end})
+            end,
+            SetupFOV = function() end,
+            AddESP = function() end,
+            RemoveESP = function() end,
+        }
+    end
+end
+
+-- Now set up FOV circles using the loaded library
+if Settings.Rage.FOVCircle then
+    DrawingLib.SetupFOV("Rage", Window.Flags)
+end
 
 -- Drawing objects storage
 local ESPObjects = {}
@@ -595,7 +640,7 @@ local VehicleESPObjects = {}
 
 -- Helper: create a text drawing
 local function CreateText(size, center, outline, font)
-    return DataHub.Utilities.Drawing.AddDrawing("Text", {
+    return DrawingLib.AddDrawing("Text", {
         Size = size,
         Center = center,
         Outline = outline,
@@ -606,12 +651,12 @@ end
 
 -- Helper: create a line drawing
 local function CreateLine()
-    return DataHub.Utilities.Drawing.AddDrawing("Line", { Visible = false })
+    return DrawingLib.AddDrawing("Line", { Visible = false })
 end
 
 -- Helper: create a circle drawing
 local function CreateCircle()
-    return DataHub.Utilities.Drawing.AddDrawing("Circle", { Visible = false })
+    return DrawingLib.AddDrawing("Circle", { Visible = false })
 end
 
 -- Create ESP objects for a player
@@ -827,7 +872,7 @@ local function UpdateESPForPlayer(player)
     end
 end
 
--- Object ESP creation and update (simplified, can be expanded)
+-- Object ESP creation and update
 local function CreateObjectESP(list, obj, name, position, colorFlag)
     if not obj or not position then return end
     local text = CreateText(12, true, true, 2)
@@ -998,4 +1043,5 @@ end)
 -- ███████████████████████████████████████████████████████
 print("Data Hub - Project Delta loaded successfully!")
 print("ESP reads real health from GameplayVariables.")
+print("Drawing library:", DrawingLib == DataHub.Utilities.Drawing and "from DataHub" or "loaded directly")
 print("All features are ready. Press RightShift to open menu.")
