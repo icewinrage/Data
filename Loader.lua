@@ -51,17 +51,17 @@ getgenv().DataHub = {
     Source = "https://raw.githubusercontent.com/icewinrage/Data/refs/heads/main/" .. Branch .. "/",
 
     Games = {
-        ["1168263273"] = { Name = "Bad Business",               Script = "Games/BB"   },
-        ["3360073263"] = { Name = "Bad Business PTR",           Script = "Games/BB"   },
-        ["1586272220"] = { Name = "Steel Titans",               Script = "Games/ST"   },
-        ["807930589" ] = { Name = "The Wild West",              Script = "Games/TWW"  },
-        ["580765040" ] = { Name = "RAGDOLL UNIVERSE",           Script = "Games/RU"   },
-        ["187796008" ] = { Name = "Those Who Remain",           Script = "Games/TWR"  },
-        ["358276974" ] = { Name = "Apocalypse Rising 2",        Script = "Games/AR2"  },
-        ["3495983524"] = { Name = "Apocalypse Rising 2 Dev.",   Script = "Games/AR2"  },
-        ["1054526971"] = { Name = "Blackhawk Rescue Mission 5", Script = "Games/BRM5" },
-        ["1793802713"] = { Name = "Deadline",                   Script = "Games/DL"   },
-        ["6483626525"] = { Name = "Project Delta",              Script = "Games/Delta" }
+        ["1168263273"] = { Name = "Bad Business",               Script = "Games/BB.lua"   },
+        ["3360073263"] = { Name = "Bad Business PTR",           Script = "Games/BB.lua"   },
+        ["1586272220"] = { Name = "Steel Titans",               Script = "Games/ST.lua"   },
+        ["807930589" ] = { Name = "The Wild West",              Script = "Games/TWW.lua"  },
+        ["580765040" ] = { Name = "RAGDOLL UNIVERSE",           Script = "Games/RU.lua"   },
+        ["187796008" ] = { Name = "Those Who Remain",           Script = "Games/TWR.lua"  },
+        ["358276974" ] = { Name = "Apocalypse Rising 2",        Script = "Games/AR2.lua"  },
+        ["3495983524"] = { Name = "Apocalypse Rising 2 Dev.",   Script = "Games/AR2.lua"  },
+        ["1054526971"] = { Name = "Blackhawk Rescue Mission 5", Script = "Games/BRM5.lua" },
+        ["1793802713"] = { Name = "Deadline",                   Script = "Games/DL.lua"   },
+        ["6483626525"] = { Name = "Project Delta",              Script = "Games/Delta.lua" }
     }
 }
 
@@ -91,3 +91,4 @@ DataHub.Utilities.UI:Push({
     Description = DataHub.Game.Name .. " loaded!\n\nThis script is open sourced\nIf you have paid for this script\nOr had to go thru ads\nYou have been scammed.",
     Duration = NotificationTime
 })
+
