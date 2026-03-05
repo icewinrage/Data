@@ -1,6 +1,7 @@
--- Data Hub - Project Delta (Final Tuned ESP)
+-- Data Hub - Project Delta (Final Boosted ESP)
 -- Game ID: 2862098693
 -- Features: Custom ESP (players, items, quests, vehicles, death history), RageBot, Gun Mods, World, Misc
+-- Улучшена видимость на дальних дистанциях: увеличены размеры и толщина линий
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
@@ -55,7 +56,7 @@ local Settings = {
             Enabled = false,
             IncludeNPC = false,
             ScaleType = "Dynamic",
-            MaxDistance = 1000
+            MaxDistance = 2000 -- увеличено для теста
         },
         Box = {
             Enabled = false,
@@ -257,7 +258,7 @@ local GunTab = Window:Tab({Name = "Gun Mods"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: VISUALS (упрощённые настройки)
+-- UI: VISUALS
 -- ███████████████████████████████████████████████████████
 local VisualsTab = Window:Tab({Name = "Visuals"}) do
     local GeneralSection = VisualsTab:Section({Name = "General", Side = "Left"}) do
@@ -270,7 +271,7 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             {Name = "Dynamic", Mode = "Button", Value = true},
             {Name = "Bounding", Mode = "Button"}
         }, Callback = function(selected) Settings.Visuals.General.ScaleType = selected[1] end})
-        GeneralSection:Slider({Name = "Max Distance", Flag = "Delta/Visuals/General/MaxDistance", Min = 0, Max = 5000, Value = 1000,
+        GeneralSection:Slider({Name = "Max Distance", Flag = "Delta/Visuals/General/MaxDistance", Min = 0, Max = 5000, Value = 2000,
             Callback = function(val) Settings.Visuals.General.MaxDistance = val end})
     end
 
@@ -488,30 +489,12 @@ local function GetRealHealth(player)
     return 100
 end
 
-local function GetCurrentWeapon(player)
-    local vars = GetPlayerGameplayVars(player)
-    if vars then
-        local tool = vars:FindFirstChild("CurrentTool")
-        if tool then
-            return tool.Value
-        end
-    end
-    local char = player.Character
-    if char then
-        local tool = char:FindFirstChildOfClass("Tool")
-        if tool then
-            return tool.Name
-        end
-    end
-    return "None"
-end
-
 local function IsEnemy(player)
     return player ~= LocalPlayer
 end
 
 -- ███████████████████████████████████████████████████████
--- EFFICIENT ESP SYSTEM
+-- ESP SYSTEM (увеличенные размеры и толщина)
 -- ███████████████████████████████████████████████████████
 
 local function newLine()
@@ -531,28 +514,33 @@ local function CreatePlayerESP(player)
         Name = newText(),
         Distance = newText(),
         Tracer = newLine(),
-        HealthBar = { newLine(), newLine() }, -- фон и заполнение
+        HealthBar = { newLine(), newLine() },
         SkeletonLines = {}
     }
 
-    esp.Name.Size = 14
+    -- Настройка текста: размер минимум 14, на больших дистанциях не уменьшается слишком сильно
+    esp.Name.Size = 16
     esp.Name.Center = true
     esp.Name.Outline = true
     esp.Name.Font = 2
-    esp.Distance.Size = 12
+    esp.Distance.Size = 14
     esp.Distance.Center = true
     esp.Distance.Outline = true
     esp.Distance.Font = 2
 
-    esp.Tracer.Thickness = 2
+    -- Толщина линий увеличена
+    for _, line in ipairs(esp.BoxLines) do
+        line.Thickness = 4
+    end
+    esp.Tracer.Thickness = 3
 
-    esp.HealthBar[1].Thickness = 3
+    esp.HealthBar[1].Thickness = 4
     esp.HealthBar[1].Color = Color3.new(0,0,0)
-    esp.HealthBar[2].Thickness = 3
+    esp.HealthBar[2].Thickness = 4
 
     for i = 1, 12 do
         local line = newLine()
-        line.Thickness = 2
+        line.Thickness = 3
         esp.SkeletonLines[i] = line
     end
 
@@ -577,6 +565,7 @@ local function UpdatePlayerESP(player)
 
     local char = player.Character
     if not char then
+        -- Скрыть всё
         for _, line in ipairs(esp.BoxLines) do line.Visible = false end
         esp.Name.Visible = false
         esp.Distance.Visible = false
@@ -619,7 +608,6 @@ local function UpdatePlayerESP(player)
         return
     end
 
-    local isEnemy = IsEnemy(player)
     local health = GetRealHealth(player)
     local healthPercent = health / 100
 
@@ -632,12 +620,13 @@ local function UpdatePlayerESP(player)
     local distanceColor = HSVToColor(Settings.Visuals.Distance.Color)
     local skeletonColor = HSVToColor(Settings.Visuals.Skeleton.Color)
 
-    -- Box
+    -- Box с увеличенным базовым размером и минимальным порогом
     if Settings.Visuals.Box.Enabled then
         local size = char:GetExtentsSize()
-        local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
-        local boxWidth = projSize.X
-        local boxHeight = projSize.Y
+        -- Увеличиваем множитель для лучшей видимости вдалеке
+        local projSize = (size * Camera.ViewportSize.Y * 2.0) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
+        local boxWidth = math.max(projSize.X, 20) -- минимум 20 пикселей
+        local boxHeight = math.max(projSize.Y, 40)
         local pos = Vector2.new(screenPos.X - boxWidth/2, screenPos.Y - boxHeight/2)
         local lines = esp.BoxLines
         lines[1].From = pos
@@ -699,14 +688,13 @@ local function UpdatePlayerESP(player)
 
     -- Health Bar (привязан к высоте бокса)
     if Settings.Visuals.Health.Bar and Settings.Visuals.Box.Enabled then
-        -- Используем ту же высоту, что и у бокса
         local size = char:GetExtentsSize()
-        local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
-        local boxHeight = projSize.Y
-        local boxWidth = projSize.X
+        local projSize = (size * Camera.ViewportSize.Y * 2.0) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
+        local boxHeight = math.max(projSize.Y, 40)
+        local boxWidth = math.max(projSize.X, 20)
         local boxPos = Vector2.new(screenPos.X - boxWidth/2, screenPos.Y - boxHeight/2)
 
-        local barX = boxPos.X - 6 -- слева от бокса
+        local barX = boxPos.X - 10 -- чуть дальше от бокса
         local barY = boxPos.Y
         esp.HealthBar[1].From = Vector2.new(barX, barY)
         esp.HealthBar[1].To = Vector2.new(barX, barY + boxHeight)
@@ -727,7 +715,7 @@ local function UpdatePlayerESP(player)
         for _, line in ipairs(esp.HealthBar) do line.Visible = false end
     end
 
-    -- Skeleton (без изменений)
+    -- Skeleton
     if Settings.Visuals.Skeleton.Enabled then
         local head = char:FindFirstChild("Head")
         local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
@@ -838,7 +826,7 @@ local function UpdatePlayerESP(player)
 end
 
 -- ███████████████████████████████████████████████████████
--- ESP ДЛЯ ОБЪЕКТОВ (Containers, QuestItems, Vehicles)
+-- ESP ДЛЯ ОБЪЕКТОВ
 -- ███████████████████████████████████████████████████████
 
 local ItemESP = {}
@@ -847,7 +835,7 @@ local VehicleESP = {}
 
 local function CreateObjectESP(list, obj, pos, name, flag)
     local text = Drawing.new("Text")
-    text.Size = 12
+    text.Size = 14
     text.Center = true
     text.Outline = true
     text.Font = 2
@@ -887,7 +875,7 @@ local function UpdateObjectESP(list, flag)
     end
 end
 
--- Инициализация существующих объектов (Containers, QuestItems, Vehicles)
+-- Инициализация объектов
 if Workspace:FindFirstChild("Containers") then
     for _, container in ipairs(Workspace.Containers:GetChildren()) do
         CreateObjectESP(ItemESP, container, container:FindFirstChild("Part") or container, container.Name, "ItemText")
@@ -916,7 +904,7 @@ if Workspace:FindFirstChild("Vehicles") then
 end
 
 -- ███████████████████████████████████████████████████████
--- DEATH HISTORY
+-- DEATH HISTORY (исправленная)
 -- ███████████████████████████████████████████████████████
 local DeathESP = {}
 local DeathCounter = 0
@@ -924,17 +912,42 @@ local DeathCounter = 0
 local function OnPlayerDied(player)
     if not Settings.Visuals.DeathHistory.Enabled then return end
     local char = player.Character
-    if not char then return end
+    if not char then
+        -- Если персонажа нет, попробуем позже (но обычно событие приходит с ним)
+        return
+    end
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
     DeathCounter = DeathCounter + 1
     local text = Drawing.new("Text")
-    text.Size = 14
+    text.Size = 18
     text.Center = true
     text.Outline = true
     text.Font = 2
-    table.insert(DeathESP, { pos = root.Position, text = text, count = DeathCounter })
+    text.Color = Color3.new(1,0,0)
+    text.Text = "☠️ " .. DeathCounter
+    table.insert(DeathESP, { pos = root.Position, text = text, count = DeathCounter, time = tick() })
 end
+
+-- Подключаемся к смерти всех игроков (включая будущих)
+local function hookPlayer(player)
+    if player == LocalPlayer then return end
+    local function onCharAdded(char)
+        local hum = char:WaitForChild("Humanoid")
+        hum.Died:Connect(function()
+            OnPlayerDied(player)
+        end)
+    end
+    if player.Character then
+        onCharAdded(player.Character)
+    end
+    player.CharacterAdded:Connect(onCharAdded)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    hookPlayer(player)
+end
+Players.PlayerAdded:Connect(hookPlayer)
 
 local function UpdateDeathESP()
     if not Settings.Visuals.DeathHistory.Enabled then
@@ -949,40 +962,29 @@ local function UpdateDeathESP()
         Settings.Visuals.DeathHistory.Color[3] or 1
     )
     local maxDist = Settings.Visuals.General.MaxDistance
-    for _, entry in ipairs(DeathESP) do
-        local screenPos, onScreen = Camera:WorldToViewportPoint(entry.pos)
-        if onScreen then
-            local dist = (entry.pos - Camera.CFrame.Position).Magnitude
-            if dist <= maxDist then
-                entry.text.Visible = true
-                entry.text.Text = "☠️ " .. entry.count
-                entry.text.Color = color
-                entry.text.Position = Vector2.new(screenPos.X, screenPos.Y)
+    for i, entry in ipairs(DeathESP) do
+        -- Удаляем старые записи (старше 5 минут)
+        if tick() - entry.time > 300 then
+            entry.text:Destroy()
+            table.remove(DeathESP, i)
+        else
+            local screenPos, onScreen = Camera:WorldToViewportPoint(entry.pos)
+            if onScreen then
+                local dist = (entry.pos - Camera.CFrame.Position).Magnitude
+                if dist <= maxDist then
+                    entry.text.Visible = true
+                    entry.text.Text = "☠️ " .. entry.count
+                    entry.text.Color = color
+                    entry.text.Position = Vector2.new(screenPos.X, screenPos.Y)
+                else
+                    entry.text.Visible = false
+                end
             else
                 entry.text.Visible = false
             end
-        else
-            entry.text.Visible = false
         end
     end
 end
-
--- Подключение событий смерти
-for _, player in ipairs(Players:GetPlayers()) do
-    if player.Character then
-        local hum = player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.Died:Connect(function() OnPlayerDied(player) end)
-        end
-    end
-end
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(char)
-        local hum = char:WaitForChild("Humanoid")
-        hum.Died:Connect(function() OnPlayerDied(player) end)
-    end)
-end)
 
 -- ███████████████████████████████████████████████████████
 -- MAIN RENDER LOOP
@@ -1028,8 +1030,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Очистка
+-- Очистка при удалении игрока
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
-print("Data Hub - Project Delta (Final Tuned ESP) loaded")
+print("Data Hub - Project Delta (Boosted ESP) loaded")
 print("Paths: Workspace.Containers, Workspace.QuestItems, Workspace.Vehicles")
+print("All elements are now larger and visible from distance.")
