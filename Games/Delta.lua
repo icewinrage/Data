@@ -1,388 +1,268 @@
--- Standalone Working Script for Project Delta (Roblox Game ID: 6483626525)
--- This is a fixed version with working Aimbot, Trigger Bot, Silent Aim, ESP, and Misc features.
--- Includes a simple UI using Rayfield (a common Roblox UI library). If you need to use DataHub, run via Loader.
--- Note: Using cheats can result in bans. Use at your own risk.
+-- Data Hub : Project Delta Module
 
--- Services
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local DataHub = getgenv().DataHub
+if not DataHub then return end
+
+local UI = DataHub.Utilities.UI
+local Physics = DataHub.Utilities.Physics
+local Drawing = DataHub.Utilities.Drawing
+
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Lighting = game:GetService("Lighting")
-
--- Variables
-local Camera = Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
--- Body parts
-local BodyParts = {"Head", "HumanoidRootPart", "UpperTorso", "LowerTorso", "RightUpperArm", "LeftUpperArm", "RightUpperLeg", "LeftUpperLeg"}
+-------------------------------------------------
+-- STATE
+-------------------------------------------------
 
--- Settings (default values)
-local Settings = {
-    Aimbot = {
-        Enabled = false,
-        TeamCheck = true,
-        WallCheck = true,
-        Prediction = true,
-        Smoothness = 0.15,
-        FOV = 150,
-        Distance = 500,
-        Priority = "Head",
-        Keybind = Enum.KeyCode.Q
-    },
-    Trigger = {
-        Enabled = false,
-        Delay = 0.05,
-        FOV = 30,
-        Keybind = Enum.KeyCode.V
-    },
-    SilentAim = {
-        Enabled = false,
-        HitChance = 100,
-        FOV = 200,
-        WallCheck = true
-    },
-    ESP = {
-        Enabled = false,
-        TeamCheck = true,
-        Boxes = true,
-        Names = true,
-        Distance = true,
-        Health = true,
-        Tracers = true,
-        Loot = false,
-        LootDistance = 150
-    },
-    Misc = {
-        NoRecoil = false,
-        NoSpread = false,
-        AutoFire = false,
-        Godmode = false,
-        NoClip = false
-    }
+local Delta = {
+    Toggles = {},
+    Connections = {},
+    ESPObjects = {}
 }
 
--- ESP Drawings
-local ESPDrawings = {}
+-------------------------------------------------
+-- UI
+-------------------------------------------------
 
--- Simple ESP function
-local function CreateESP(player)
-    if player == LocalPlayer then return end
-    local char = player.Character
-    if not char then return end
+local Window = UI:CreateWindow({
+    Title = "Data Hub - Project Delta",
+    Size = UDim2.new(0,520,0,360)
+})
 
-    local drawing = {}
-    drawing.Box = Drawing.new("Square")
-    drawing.Box.Thickness = 2
-    drawing.Box.Visible = false
-    drawing.Box.Color = Color3.fromRGB(255, 0, 0)
+local PlayerTab = Window:CreateTab("Player")
+local VisualTab = Window:CreateTab("Visuals")
+local MiscTab = Window:CreateTab("Misc")
 
-    drawing.Name = Drawing.new("Text")
-    drawing.Name.Visible = false
-    drawing.Name.Color = Color3.fromRGB(255, 255, 255)
-    drawing.Name.Size = 14
+-------------------------------------------------
+-- PLAYER FUNCTIONS
+-------------------------------------------------
 
-    drawing.Distance = Drawing.new("Text")
-    drawing.Distance.Visible = false
-    drawing.Distance.Color = Color3.fromRGB(255, 255, 255)
-    drawing.Distance.Size = 14
+PlayerTab:CreateSlider({
+    Name = "WalkSpeed",
+    Min = 16,
+    Max = 100,
+    Default = 16,
 
-    drawing.Health = Drawing.new("Text")
-    drawing.Health.Visible = false
-    drawing.Health.Color = Color3.fromRGB(0, 255, 0)
-    drawing.Health.Size = 14
+    Callback = function(value)
 
-    drawing.Tracer = Drawing.new("Line")
-    drawing.Tracer.Visible = false
-    drawing.Tracer.Color = Color3.fromRGB(255, 0, 0)
-    drawing.Tracer.Thickness = 1
-    drawing.Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-
-    ESPDrawings[player] = drawing
-end
-
--- Update ESP
-RunService.RenderStepped:Connect(function()
-    for player, drawing in pairs(ESPDrawings) do
-        local char = player.Character
-        if not char or not Settings.ESP.Enabled then
-            drawing.Box.Visible = false
-            drawing.Name.Visible = false
-            drawing.Distance.Visible = false
-            drawing.Health.Visible = false
-            drawing.Tracer.Visible = false
-            continue
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.WalkSpeed = value
         end
 
-        local root = char:FindFirstChild("HumanoidRootPart")
+    end
+})
+
+PlayerTab:CreateSlider({
+    Name = "JumpPower",
+    Min = 50,
+    Max = 150,
+    Default = 50,
+
+    Callback = function(value)
+
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.JumpPower = value
+        end
+
+    end
+})
+
+-------------------------------------------------
+-- INFINITE JUMP
+-------------------------------------------------
+
+PlayerTab:CreateToggle({
+    Name = "Infinite Jump",
+
+    Callback = function(state)
+
+        Delta.Toggles.InfJump = state
+
+    end
+})
+
+table.insert(
+    Delta.Connections,
+    UserInputService.JumpRequest:Connect(function()
+
+        if not Delta.Toggles.InfJump then
+            return
+        end
+
+        local char = LocalPlayer.Character
+        if not char then return end
+
         local hum = char:FindFirstChild("Humanoid")
-        if not root or not hum or hum.Health <= 0 then continue end
+        if not hum then return end
 
-        if Settings.ESP.TeamCheck and player.Team == LocalPlayer.Team then continue end
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
 
-        local pos, onScreen = Camera:WorldToViewportPoint(root.Position)
-        if not onScreen then
-            drawing.Box.Visible = false
-            drawing.Name.Visible = false
-            drawing.Distance.Visible = false
-            drawing.Health.Visible = false
-            drawing.Tracer.Visible = false
-            continue
-        end
+    end)
+)
 
-        local size = (Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0)).Y - Camera:WorldToViewportPoint(root.Position + Vector3.new(0, 2.6, 0)).Y) / 2
-        local boxSize = Vector2.new(math.floor(size * 1.5), math.floor(size * 1.9))
-        local boxPos = Vector2.new(math.floor(pos.X - size * 0.75), math.floor(pos.Y - size * 1.1))
+-------------------------------------------------
+-- ESP
+-------------------------------------------------
 
-        if Settings.ESP.Boxes then
-            drawing.Box.Size = boxSize
-            drawing.Box.Position = boxPos
-            drawing.Box.Visible = true
-        end
+local function CreateESP(player)
 
-        if Settings.ESP.Names then
-            drawing.Name.Text = player.Name
-            drawing.Name.Position = Vector2.new(boxPos.X + boxSize.X / 2, boxPos.Y - 16)
-            drawing.Name.Visible = true
-        end
+    if player == LocalPlayer then return end
 
-        if Settings.ESP.Distance then
-            local dist = (LocalPlayer.Character.HumanoidRootPart.Position - root.Position).Magnitude
-            drawing.Distance.Text = math.floor(dist) .. " studs"
-            drawing.Distance.Position = Vector2.new(boxPos.X + boxSize.X / 2, boxPos.Y + boxSize.Y + 2)
-            drawing.Distance.Visible = true
-        end
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = Color3.fromRGB(255,0,0)
+    box.Thickness = 2
+    box.Filled = false
 
-        if Settings.ESP.Health then
-            drawing.Health.Text = math.floor(hum.Health) .. "/" .. hum.MaxHealth
-            drawing.Health.Position = Vector2.new(boxPos.X - 40, boxPos.Y)
-            drawing.Health.Visible = true
-        end
+    Delta.ESPObjects[player] = box
 
-        if Settings.ESP.Tracers then
-            drawing.Tracer.To = Vector2.new(pos.X, pos.Y)
-            drawing.Tracer.Visible = true
-        end
-    end
-end)
-
--- Create ESP for all players
-for _, player in ipairs(Players:GetPlayers()) do
-    CreateESP(player)
-end
-Players.PlayerAdded:Connect(function(player)
-    CreateESP(player)
-end)
-
--- Is Alive check
-local function IsAlive(char)
-    local hum = char:FindFirstChild("Humanoid")
-    return hum and hum.Health > 0
 end
 
--- Wall check
-local function CanSee(part)
-    local origin = Camera.CFrame.Position
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {LocalPlayer.Character}
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    local result = Workspace:Raycast(origin, (part.Position - origin).Unit * (part.Position - origin).Magnitude, params)
-    return result == nil or result.Instance == part
+local function RemoveESP(player)
+
+    local obj = Delta.ESPObjects[player]
+    if obj then
+        obj:Remove()
+        Delta.ESPObjects[player] = nil
+    end
+
 end
 
--- Get closest target
-local function GetClosest(fov, dist, teamCheck, wallCheck, prediction, priority)
-    local closest = nil
-    local minDist = fov
-    local mousePos = UserInputService:GetMouseLocation()
+VisualTab:CreateToggle({
+    Name = "Player ESP",
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player == LocalPlayer then continue end
-        local char = player.Character
-        if not char or not IsAlive(char) then continue end
-        if teamCheck and player.Team == LocalPlayer.Team then continue end
+    Callback = function(state)
 
-        local part = char:FindFirstChild(priority) or char.HumanoidRootPart
-        local pos = part.Position
-        if prediction then
-            pos += part.Velocity * (pos - Camera.CFrame.Position).Magnitude / 1000 -- simple prediction
-        end
+        Delta.Toggles.ESP = state
 
-        local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
-        if not onScreen then continue end
+        if state then
 
-        local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-        if screenDist > minDist then continue end
-
-        local targetDist = (Camera.CFrame.Position - pos).Magnitude
-        if targetDist > dist then continue end
-
-        if wallCheck and not CanSee(part) then continue end
-
-        minDist = screenDist
-        closest = part
-    end
-    return closest
-end
-
--- Aimbot
-local aimbotActive = false
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Settings.Aimbot.Keybind then
-        aimbotActive = true
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.KeyCode == Settings.Aimbot.Keybind then
-        aimbotActive = false
-    end
-end)
-
-RunService.RenderStepped:Connect(function(delta)
-    if not Settings.Aimbot.Enabled or not aimbotActive then return end
-
-    local target = GetClosest(Settings.Aimbot.FOV, Settings.Aimbot.Distance, Settings.Aimbot.TeamCheck, Settings.Aimbot.WallCheck, Settings.Aimbot.Prediction, Settings.Aimbot.Priority)
-    if target then
-        local aimPos = Camera:WorldToScreenPoint(target.Position)
-        local mousePos = UserInputService:GetMouseLocation()
-        local move = Vector2.new((aimPos.X - mousePos.X) * Settings.Aimbot.Smoothness, (aimPos.Y - mousePos.Y) * Settings.Aimbot.Smoothness)
-        mousemoverel(move.X, move.Y)
-    end
-end)
-
--- Trigger Bot
-local triggerActive = false
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Settings.Trigger.Keybind then
-        triggerActive = true
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.KeyCode == Settings.Trigger.Keybind then
-        triggerActive = false
-    end
-end)
-
-local lastTrigger = 0
-RunService.RenderStepped:Connect(function()
-    if not Settings.Trigger.Enabled or not triggerActive then return end
-    if tick() - lastTrigger < Settings.Trigger.Delay then return end
-
-    local target = GetClosest(Settings.Trigger.FOV, math.huge, Settings.Aimbot.TeamCheck, Settings.Aimbot.WallCheck, false, "HumanoidRootPart")
-    if target then
-        mouse1press()
-        task.wait(0.01)
-        mouse1release()
-        lastTrigger = tick()
-    end
-end)
-
--- Silent Aim (hook raycast or mouse target)
-local oldNamecall = nil
-oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-    local args = {...}
-    if Settings.SilentAim.Enabled and getnamecallmethod() == "Raycast" and math.random(1, 100) <= Settings.SilentAim.HitChance then
-        local target = GetClosest(Settings.SilentAim.FOV, math.huge, Settings.Aimbot.TeamCheck, Settings.SilentAim.WallCheck, true, Settings.Aimbot.Priority)
-        if target then
-            args[2] = (target.Position - args[1]).Unit * 10000
-        end
-    end
-    return oldNamecall(self, unpack(args))
-end)
-
--- Misc: Speed and Jump
-RunService.Stepped:Connect(function()
-    if LocalPlayer.Character and LocalPlayer.Character.Humanoid then
-        LocalPlayer.Character.Humanoid.WalkSpeed = 16 * Settings.Misc.Speed
-        LocalPlayer.Character.Humanoid.JumpPower = Settings.Misc.JumpPower
-    end
-end)
-
--- NoClip
-local function NoClip(enable)
-    if enable then
-        RunService.Stepped:Connect(function()
-            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
+            for _,plr in pairs(Players:GetPlayers()) do
+                CreateESP(plr)
             end
+
+        else
+
+            for _,obj in pairs(Delta.ESPObjects) do
+                obj:Remove()
+            end
+
+            Delta.ESPObjects = {}
+
+        end
+
+    end
+})
+
+-------------------------------------------------
+-- ESP UPDATE LOOP
+-------------------------------------------------
+
+table.insert(
+    Delta.Connections,
+    RunService.RenderStepped:Connect(function()
+
+        if not Delta.Toggles.ESP then
+            return
+        end
+
+        for player,box in pairs(Delta.ESPObjects) do
+
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+            if hrp then
+
+                local pos, visible =
+                    workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+
+                box.Visible = visible
+
+                box.Size = Vector2.new(40,60)
+                box.Position = Vector2.new(pos.X-20,pos.Y-30)
+
+            else
+
+                box.Visible = false
+
+            end
+
+        end
+
+    end)
+)
+
+-------------------------------------------------
+-- PLAYER JOIN
+-------------------------------------------------
+
+table.insert(
+    Delta.Connections,
+    Players.PlayerAdded:Connect(function(player)
+
+        if Delta.Toggles.ESP then
+            CreateESP(player)
+        end
+
+    end)
+)
+
+table.insert(
+    Delta.Connections,
+    Players.PlayerRemoving:Connect(function(player)
+
+        RemoveESP(player)
+
+    end)
+)
+
+-------------------------------------------------
+-- MISC
+-------------------------------------------------
+
+MiscTab:CreateButton({
+    Name = "Rejoin Server",
+
+    Callback = function()
+
+        game:GetService("TeleportService"):Teleport(
+            game.PlaceId,
+            LocalPlayer
+        )
+
+    end
+})
+
+-------------------------------------------------
+-- CLEANUP
+-------------------------------------------------
+
+function Delta:Unload()
+
+    for _,con in pairs(self.Connections) do
+        pcall(function()
+            con:Disconnect()
         end)
     end
+
+    for _,obj in pairs(self.ESPObjects) do
+        pcall(function()
+            obj:Remove()
+        end)
+    end
+
 end
 
--- Godmode (simple health reset, may not work)
-if Settings.Misc.Godmode then
-    LocalPlayer.Character.Humanoid.HealthChanged:Connect(function(health)
-        if health < LocalPlayer.Character.Humanoid.MaxHealth then
-            LocalPlayer.Character.Humanoid.Health = LocalPlayer.Character.Humanoid.MaxHealth
-        end
-    end)
-end
+-------------------------------------------------
+-- NOTIFICATION
+-------------------------------------------------
 
--- UI using Rayfield (assume it's loaded or include if needed)
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local Window = Rayfield:CreateWindow({
-    Name = "Project Delta Cheat",
-    LoadingTitle = "Loading...",
-    LoadingSubtitle = "by Grok",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "ProjectDeltaCheat",
-        FileName = "Config"
-    }
-})
-
-local CombatTab = Window:CreateTab("Combat")
-CombatTab:CreateToggle({
-    Name = "Aimbot Enabled",
-    CurrentValue = false,
-    Callback = function(val) Settings.Aimbot.Enabled = val end
-})
-CombatTab:CreateSlider({
-    Name = "Aimbot Smoothness",
-    Range = {0.05, 0.5},
-    Increment = 0.01,
-    CurrentValue = 0.15,
-    Callback = function(val) Settings.Aimbot.Smoothness = val end
-})
--- Add more UI elements for other settings similarly...
-
-local VisualsTab = Window:CreateTab("Visuals")
-VisualsTab:CreateToggle({
-    Name = "ESP Enabled",
-    CurrentValue = false,
-    Callback = function(val) Settings.ESP.Enabled = val end
-})
-VisualsTab:CreateToggle({
-    Name = "Boxes",
-    CurrentValue = true,
-    Callback = function(val) Settings.ESP.Boxes = val end
-})
--- Add others...
-
-local MiscTab = Window:CreateTab("Misc")
-MiscTab:CreateSlider({
-    Name = "Speed Multiplier",
-    Range = {1, 5},
-    Increment = 0.1,
-    CurrentValue = 1.5,
-    Callback = function(val) Settings.Misc.Speed = val end
-})
-MiscTab:CreateToggle({
-    Name = "NoClip",
-    CurrentValue = false,
-    Callback = function(val) Settings.Misc.NoClip = val; NoClip(val) end
-})
--- Add others...
-
-Rayfield:LoadConfiguration()
-
--- Notification
-Rayfield:Notify({
-    Title = "Script Loaded",
-    Content = "Project Delta cheat loaded successfully!",
-    Duration = 5
+UI:Push({
+    Title = "Data Hub",
+    Description = "Project Delta module loaded",
+    Duration = 10
 })
