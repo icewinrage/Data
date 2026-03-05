@@ -1,4 +1,4 @@
--- Data Hub Loader
+-- Data Hub Loader (отладочная версия)
 repeat task.wait() until game.IsLoaded
 repeat task.wait() until game.GameId ~= 0
 
@@ -22,8 +22,23 @@ local function GetFile(File)
     or game:HttpGet(("%s%s"):format(DataHub.Source, File))
 end
 
+-- ███████████████████████████████████████████████████████
+-- ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ С ПЕРЕХВАТОМ ОШИБОК
+-- ███████████████████████████████████████████████████████
 local function LoadScript(Script)
-    return loadstring(GetFile(Script .. ".lua"), Script)()
+    local code = GetFile(Script .. ".lua")
+    if not code or code == "" then
+        error("Не удалось загрузить файл: " .. Script)
+    end
+    local fn, err = loadstring(code, Script)
+    if not fn then
+        error("Ошибка компиляции " .. Script .. ": " .. err)
+    end
+    local success, result = pcall(fn)
+    if not success then
+        error("Ошибка выполнения " .. Script .. ": " .. tostring(result))
+    end
+    return result
 end
 
 local function GetGameInfo()
@@ -49,7 +64,8 @@ getgenv().DataHub = {
         ["358276974" ] = { Name = "Apocalypse Rising 2",        Script = "Games/AR2"  },
         ["3495983524"] = { Name = "Apocalypse Rising 2 Dev.",   Script = "Games/AR2"  },
         ["1054526971"] = { Name = "Blackhawk Rescue Mission 5", Script = "Games/BRM5" },
-        ["2862098693"] = { Name = "Project Delta",              Script = "Games/Delta"}
+        ["1793802713"] = { Name = "Deadline",                   Script = "Games/DL"   },
+        ["6483626525"] = { Name = "Project Delta",              Script = "Games/Delta" }
     }
 }
 
@@ -79,5 +95,3 @@ DataHub.Utilities.UI:Push({
     Description = DataHub.Game.Name .. " loaded!\n\nThis script is open sourced\nIf you have paid for this script\nOr had to go thru ads\nYou have been scammed.",
     Duration = NotificationTime
 })
-
-
