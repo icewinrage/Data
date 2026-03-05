@@ -1,5 +1,9 @@
 -- Data Hub - Deadline (RECOIL Studio)
 -- ID игры: 1793802713 (или уточните актуальный)
+print("=== DL.lua загрузился! Проверка зависимостей ===")
+print("DataHub существует?", DataHub ~= nil)
+print("DataHub.Utilities существует?", DataHub and DataHub.Utilities ~= nil)
+print("DataHub.Utilities.UI существует?", DataHub and DataHub.Utilities and DataHub.Utilities.UI ~= nil)
 
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
