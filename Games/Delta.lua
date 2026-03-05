@@ -1,6 +1,6 @@
 -- Data Hub - Project Delta (Ultimate Edition)
 -- Game ID: 6483626525
--- Features: RageBot, Gun Mods, Visuals, World, Misc, Anti-UAC
+-- Features: RageBot, Gun Mods, Visuals (ESP), World, Misc, Anti-UAC
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
@@ -48,7 +48,7 @@ local Settings = {
         RemoveObstruction = false,
         DoubleTap = false,
         RapidFire = false,
-        BulletCount = 10  -- новое название и диапазон 0-20
+        BulletCount = 10
     },
     Visuals = {
         General = {
@@ -132,9 +132,6 @@ local HitPartsList = {
     {Name = "Torso", Mode = "Toggle", Value = true},
     {Name = "Legs", Mode = "Toggle", Value = true}
 }
-
--- Body parts for aimbot priority (если понадобится)
-local BodyParts = {"Head", "HumanoidRootPart", "Torso", "Right Arm", "Left Arm"}
 
 -- Проверка UI
 if not DataHub or not DataHub.Utilities or not DataHub.Utilities.UI then
@@ -468,14 +465,12 @@ local MiscTab = Window:Tab({Name = "Misc"}) do
             Callback = function(val)
                 Settings.Misc.AntiUAC = val
                 if val then
-                    -- Попытка заблокировать UAC RemoteFunction
                     local uac = ReplicatedStorage:FindFirstChild("UAC")
                     if uac and uac:IsA("RemoteFunction") then
-                        -- Захукаем InvokeServer и OnClientInvoke
                         local oldInvoke
                         oldInvoke = hookfunction(uac.InvokeServer, function(...)
                             if Settings.Misc.AntiUAC then
-                                return -- блокируем вызов
+                                return
                             else
                                 return oldInvoke(...)
                             end
@@ -484,7 +479,6 @@ local MiscTab = Window:Tab({Name = "Misc"}) do
                     else
                         warn("UAC RemoteFunction not found")
                     end
-                    -- Также можно заблокировать QuickMove, если нужно
                 end
             end
         })
@@ -498,7 +492,197 @@ DataHub.Utilities:SettingsSection(Window, "RightShift", false)
 DataHub.Utilities.InitAutoLoad(Window)
 
 -- ███████████████████████████████████████████████████████
--- ЗАГЛУШКИ ДЛЯ ЛОГИКИ (TODO: реализовать под игру)
+-- РЕАЛИЗАЦИЯ VISUALS (ESP)
+-- ███████████████████████████████████████████████████████
+
+-- Вспомогательная функция для получения цвета из таблицы HSV
+local function GetColorFromHSV(hsvTable)
+    if not hsvTable then return Color3.new(1,1,1) end
+    return Color3.fromHSV(hsvTable[1] or 0, hsvTable[2] or 1, hsvTable[3] or 1)
+end
+
+-- Функция определения врага/союзника (заглушка, нужно адаптировать под игру)
+local function IsEnemy(player)
+    if player == LocalPlayer then return false end
+    if not player.Character then return false end
+    -- Здесь нужно использовать логику игры (например, команды)
+    return true -- пока все чужие считаются врагами
+end
+
+-- Хранилище для Drawing объектов каждого игрока
+local ESPObjects = {}
+
+-- Создание объектов для игрока
+local function CreateESPForPlayer(player)
+    if ESPObjects[player] then return end
+    ESPObjects[player] = {
+        Box = {
+            Lines = {}, -- для бокса
+            HealthBar = nil,
+        },
+        Name = DataHub.Utilities.Drawing.AddDrawing("Text", { Size = 14, Center = true, Outline = true, Font = 2 }),
+        Distance = DataHub.Utilities.Drawing.AddDrawing("Text", { Size = 12, Center = true, Outline = true, Font = 2 }),
+        Tracer = {
+            Main = DataHub.Utilities.Drawing.AddDrawing("Line", {}),
+            Outline = DataHub.Utilities.Drawing.AddDrawing("Line", {}),
+        },
+        HeadDot = {
+            Main = DataHub.Utilities.Drawing.AddDrawing("Circle", {}),
+            Outline = DataHub.Utilities.Drawing.AddDrawing("Circle", {}),
+        }
+    }
+    -- TODO: создать линии для бокса (8 линий) если нужно
+end
+
+-- Обновление ESP для игрока
+local function UpdateESPForPlayer(player)
+    local esp = ESPObjects[player]
+    if not esp then return end
+
+    local character = player.Character
+    if not character then
+        -- скрыть все объекты
+        return
+    end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then
+        -- скрыть
+        return
+    end
+
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    local screenPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+    if not onScreen then return end
+
+    local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
+    local isEnemy = IsEnemy(player)
+
+    -- Получаем настройки
+    local vis = Settings.Visuals
+
+    -- Определяем цвет в зависимости от врага/союзника
+    local boxColor = GetColorFromHSV(vis.Box.Color)
+    local nameColor = GetColorFromHSV(vis.Name.Color)
+    local distanceColor = GetColorFromHSV(vis.Distance.Color)
+    local healthColor = isEnemy and Color3.new(1,0,0) or Color3.new(0,1,0)
+
+    -- Box (упрощённо, 2D бокс вокруг персонажа)
+    if vis.Box.Enabled then
+        -- вычисляем размер бокса
+        local size = Vector2.new(100, 150) -- заглушка, нужно вычислять
+        local pos = Vector2.new(screenPos.X, screenPos.Y) - size/2
+        -- TODO: отрисовка линий
+    end
+
+    -- Name
+    if vis.Name.Enabled then
+        esp.Name.Visible = true
+        esp.Name.Text = player.Name
+        esp.Name.Color = nameColor
+        esp.Name.Position = Vector2.new(screenPos.X, screenPos.Y - 50) -- над головой
+    else
+        esp.Name.Visible = false
+    end
+
+    -- Distance
+    if vis.Distance.Enabled then
+        esp.Distance.Visible = true
+        local unit = vis.Distance.Mode == "Meters" and "m" or "studs"
+        esp.Distance.Text = string.format("%.0f %s", distance, unit)
+        esp.Distance.Color = distanceColor
+        esp.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + 30)
+    else
+        esp.Distance.Visible = false
+    end
+
+    -- Tracers
+    if vis.Tracers.Enabled then
+        local fromPos
+        if vis.Tracers.Mode == "From Mouse" then
+            fromPos = UserInputService:GetMouseLocation()
+        else
+            fromPos = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+        end
+        local toPos = Vector2.new(screenPos.X, screenPos.Y)
+        esp.Tracer.Main.From = fromPos
+        esp.Tracer.Main.To = toPos
+        esp.Tracer.Main.Color = boxColor
+        esp.Tracer.Main.Visible = true
+        if vis.Tracers.Outline then
+            esp.Tracer.Outline.From = fromPos
+            esp.Tracer.Outline.To = toPos
+            esp.Tracer.Outline.Color = Color3.new(0,0,0)
+            esp.Tracer.Outline.Thickness = esp.Tracer.Main.Thickness + 2
+            esp.Tracer.Outline.Visible = true
+        else
+            esp.Tracer.Outline.Visible = false
+        end
+    else
+        esp.Tracer.Main.Visible = false
+        esp.Tracer.Outline.Visible = false
+    end
+
+    -- Head Dots
+    if vis.HeadDots.Enabled then
+        local head = character:FindFirstChild("Head")
+        if head then
+            local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
+            if headOnScreen then
+                local radius = vis.HeadDots.Size
+                if vis.HeadDots.Autoscale then
+                    radius = radius * (1000 / math.max(distance, 1))
+                end
+                esp.HeadDot.Main.Radius = radius
+                esp.HeadDot.Main.Position = Vector2.new(headPos.X, headPos.Y)
+                esp.HeadDot.Main.Color = boxColor
+                esp.HeadDot.Main.Filled = vis.HeadDots.Filled
+                esp.HeadDot.Main.Visible = true
+                if vis.HeadDots.Outline then
+                    esp.HeadDot.Outline.Radius = radius + 1
+                    esp.HeadDot.Outline.Position = esp.HeadDot.Main.Position
+                    esp.HeadDot.Outline.Color = Color3.new(0,0,0)
+                    esp.HeadDot.Outline.Thickness = 2
+                    esp.HeadDot.Outline.Filled = false
+                    esp.HeadDot.Outline.Visible = true
+                else
+                    esp.HeadDot.Outline.Visible = false
+                end
+            end
+        end
+    else
+        esp.HeadDot.Main.Visible = false
+        esp.HeadDot.Outline.Visible = false
+    end
+end
+
+-- Главный цикл обновления визуалов
+RunService.RenderStepped:Connect(function()
+    if not Settings.Visuals.General.Enabled then return end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer or Settings.Visuals.General.IncludeNPC then
+            if not ESPObjects[player] then
+                CreateESPForPlayer(player)
+            end
+            UpdateESPForPlayer(player)
+        end
+    end
+end)
+
+-- Обработка Zoom
+RunService.RenderStepped:Connect(function()
+    if Settings.Visuals.Zoom.Enabled then
+        Camera.FieldOfView = 70 - Settings.Visuals.Zoom.Level -- пример
+    else
+        Camera.FieldOfView = 70
+    end
+end)
+
+-- ███████████████████████████████████████████████████████
+-- ЗАГЛУШКИ ДЛЯ ЛОГИКИ (TODO)
 -- ███████████████████████████████████████████████████████
 print("Data Hub - Ultimate Edition loaded")
 print("Interface ready. Implement game-specific logic for features to work.")
