@@ -1,6 +1,6 @@
 -- Data Hub - Project Delta (Ultimate Edition)
 -- Game ID: 6483626525
--- Features: RageBot, Gun Mods, Visuals (Full ESP), PlayerList
+-- Features: RageBot, Gun Mods, Visuals, World, Misc, Anti-UAC
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Variables
 local Camera = Workspace.CurrentCamera
@@ -21,7 +22,7 @@ local DoubleTapActive = false
 local RapidFireActive = false
 local ZoomActive = false
 
--- Settings tables (будут обновляться через UI)
+-- Settings tables
 local Settings = {
     Rage = {
         SilentAim = false,
@@ -47,7 +48,7 @@ local Settings = {
         RemoveObstruction = false,
         DoubleTap = false,
         RapidFire = false,
-        RapidFireDelay = 10
+        BulletCount = 10  -- новое название и диапазон 0-20
     },
     Visuals = {
         General = {
@@ -57,7 +58,7 @@ local Settings = {
         },
         Box = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false}, -- white
+            Color = {1, 1, 1, 0, false},
             Style = "Full"
         },
         Name = {
@@ -76,23 +77,13 @@ local Settings = {
         },
         Health = {
             Bar = false,
-            ColorMode = "Green" -- Red, Green, RGB
+            ColorMode = "Green"
         },
         Chams = {
             Enabled = false,
-            AllyColor = {0, 1, 0, 0, false}, -- green
-            EnemyColor = {1, 0, 0, 0, false}, -- red
+            AllyColor = {0, 1, 0, 0, false},
+            EnemyColor = {1, 0, 0, 0, false},
             Glow = false
-        },
-        OffscreenArrows = {
-            Enabled = false,
-            Filled = true,
-            Outline = true,
-            Width = 14,
-            Height = 28,
-            Radius = 150,
-            Thickness = 1,
-            Transparency = 0
         },
         ItemText = {
             Enabled = false,
@@ -106,21 +97,32 @@ local Settings = {
             Autoscale = true,
             Size = 4
         },
-        DeathHistory = false
+        DeathHistory = false,
+        Zoom = {
+            Enabled = false,
+            Level = 20
+        }
     },
-    Aimbot = {
-        Enabled = false,
-        TeamCheck = true,
-        Prediction = false,
-        Smoothness = 30,
-        FOV = 120,
-        Distance = 300,
-        Priority = "Head"
+    World = {
+        FullBright = false,
+        RemoveGrass = false,
+        RemoveShadows = false,
+        AmbientColor = {0.5, 0.5, 0.5, 0, false},
+        SkyBox = {
+            Moon = false
+        },
+        Inventory = {
+            Enabled = false,
+            Money = false,
+            Name = false,
+            Icons = false,
+            Moduls = false,
+            ShowAmount = 10
+        }
     },
-    Trigger = {
-        Enabled = false,
-        Delay = 0.1,
-        FOV = 30
+    Misc = {
+        NoClip = false,
+        AntiUAC = false
     }
 }
 
@@ -131,7 +133,7 @@ local HitPartsList = {
     {Name = "Legs", Mode = "Toggle", Value = true}
 }
 
--- Body parts for aimbot priority
+-- Body parts for aimbot priority (если понадобится)
 local BodyParts = {"Head", "HumanoidRootPart", "Torso", "Right Arm", "Left Arm"}
 
 -- Проверка UI
@@ -155,7 +157,7 @@ if not Window then
 end
 
 -- ███████████████████████████████████████████████████████
--- ВКЛАДКА RAGEBOT (первая)
+-- ВКЛАДКА RAGEBOT
 -- ███████████████████████████████████████████████████████
 local RageTab = Window:Tab({Name = "RageBot"}) do
     -- Silent Aim Section
@@ -255,18 +257,18 @@ local GunTab = Window:Tab({Name = "Gun Mods"}) do
         }):Keybind({Flag = "Delta/Gun/RapidFireKey", Mouse = true})
 
         ExtraSection:Slider({
-            Name = "Rapid Fire Delay (ms)",
-            Flag = "Delta/Gun/RapidFireDelay",
+            Name = "Bullet Count",
+            Flag = "Delta/Gun/BulletCount",
             Min = 0,
             Max = 20,
             Value = 10,
-            Callback = function(val) Settings.GunMods.RapidFireDelay = val end
+            Callback = function(val) Settings.GunMods.BulletCount = val end
         })
     end
 end
 
 -- ███████████████████████████████████████████████████████
--- ВКЛАДКА VISUALS (расширенная ESP)
+-- ВКЛАДКА VISUALS (с Zoom)
 -- ███████████████████████████████████████████████████████
 local VisualsTab = Window:Tab({Name = "Visuals"}) do
     -- General Section
@@ -355,26 +357,6 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.Chams.Glow = val end})
     end
 
-    -- Offscreen Arrows Section
-    local ArrowsSection = VisualsTab:Section({Name = "Offscreen Arrows", Side = "Right"}) do
-        ArrowsSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Arrows/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.OffscreenArrows.Enabled = val end})
-        ArrowsSection:Toggle({Name = "Filled", Flag = "Delta/Visuals/Arrows/Filled", Value = true,
-            Callback = function(val) Settings.Visuals.OffscreenArrows.Filled = val end})
-        ArrowsSection:Toggle({Name = "Outline", Flag = "Delta/Visuals/Arrows/Outline", Value = true,
-            Callback = function(val) Settings.Visuals.OffscreenArrows.Outline = val end})
-        ArrowsSection:Slider({Name = "Width", Flag = "Delta/Visuals/Arrows/Width", Min = 8, Max = 40, Value = 14,
-            Callback = function(val) Settings.Visuals.OffscreenArrows.Width = val end})
-        ArrowsSection:Slider({Name = "Height", Flag = "Delta/Visuals/Arrows/Height", Min = 8, Max = 40, Value = 28,
-            Callback = function(val) Settings.Visuals.OffscreenArrows.Height = val end})
-        ArrowsSection:Slider({Name = "Distance from Center", Flag = "Delta/Visuals/Arrows/Radius", Min = 50, Max = 300, Value = 150,
-            Callback = function(val) Settings.Visuals.OffscreenArrows.Radius = val end})
-        ArrowsSection:Slider({Name = "Thickness", Flag = "Delta/Visuals/Arrows/Thickness", Min = 1, Max = 10, Value = 1,
-            Callback = function(val) Settings.Visuals.OffscreenArrows.Thickness = val end})
-        ArrowsSection:Slider({Name = "Transparency", Flag = "Delta/Visuals/Arrows/Transparency", Min = 0, Max = 1, Precise = 2, Value = 0,
-            Callback = function(val) Settings.Visuals.OffscreenArrows.Transparency = val end})
-    end
-
     -- Item Text Section
     local ItemTextSection = VisualsTab:Section({Name = "Item Text", Side = "Right"}) do
         ItemTextSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/ItemText/Enabled", Value = false,
@@ -404,71 +386,109 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
         DeathSection:Toggle({Name = "Death History ESP", Flag = "Delta/Visuals/DeathHistory", Value = false,
             Callback = function(val) Settings.Visuals.DeathHistory = val end})
     end
+
+    -- Zoom Section
+    local ZoomSection = VisualsTab:Section({Name = "Zoom", Side = "Right"}) do
+        ZoomSection:Toggle({
+            Name = "Enable Zoom",
+            Flag = "Delta/Visuals/Zoom/Enabled",
+            Value = false,
+            Callback = function(val) Settings.Visuals.Zoom.Enabled = val end
+        }):Keybind({Flag = "Delta/Visuals/Zoom/Keybind", Mouse = true})
+
+        ZoomSection:Slider({
+            Name = "Zoom Level",
+            Flag = "Delta/Visuals/Zoom/Level",
+            Min = 0,
+            Max = 40,
+            Value = 20,
+            Callback = function(val) Settings.Visuals.Zoom.Level = val end
+        })
+    end
 end
 
 -- ███████████████████████████████████████████████████████
--- ВКЛАДКА MISC (Aimbot, Trigger)
+-- ВКЛАДКА WORLD
+-- ███████████████████████████████████████████████████████
+local WorldTab = Window:Tab({Name = "World"}) do
+    -- Environment Section
+    local EnvSection = WorldTab:Section({Name = "Environment", Side = "Left"}) do
+        EnvSection:Toggle({Name = "Full Bright", Flag = "Delta/World/FullBright", Value = false,
+            Callback = function(val) Settings.World.FullBright = val end})
+        EnvSection:Toggle({Name = "Remove Grass", Flag = "Delta/World/RemoveGrass", Value = false,
+            Callback = function(val) Settings.World.RemoveGrass = val end})
+        EnvSection:Toggle({Name = "Remove Shadows", Flag = "Delta/World/RemoveShadows", Value = false,
+            Callback = function(val) Settings.World.RemoveShadows = val end})
+        EnvSection:Colorpicker({Name = "Change Ambient", Flag = "Delta/World/AmbientColor",
+            Value = Settings.World.AmbientColor,
+            Callback = function(val) Settings.World.AmbientColor = val end})
+    end
+
+    -- SkyBox Section
+    local SkySection = WorldTab:Section({Name = "Sky Box", Side = "Left"}) do
+        SkySection:Toggle({Name = "Moon", Flag = "Delta/World/SkyBox/Moon", Value = false,
+            Callback = function(val) Settings.World.SkyBox.Moon = val end})
+    end
+
+    -- Inventory Checker Section
+    local InvSection = WorldTab:Section({Name = "Inventory Checker", Side = "Right"}) do
+        InvSection:Toggle({
+            Name = "Enable Inventory",
+            Flag = "Delta/World/Inventory/Enabled",
+            Value = false,
+            Callback = function(val) Settings.World.Inventory.Enabled = val end
+        }):Keybind({Flag = "Delta/World/Inventory/Keybind", Mouse = true})
+
+        InvSection:Toggle({Name = "Money", Flag = "Delta/World/Inventory/Money", Value = false,
+            Callback = function(val) Settings.World.Inventory.Money = val end})
+        InvSection:Toggle({Name = "Name", Flag = "Delta/World/Inventory/Name", Value = false,
+            Callback = function(val) Settings.World.Inventory.Name = val end})
+        InvSection:Toggle({Name = "Icons", Flag = "Delta/World/Inventory/Icons", Value = false,
+            Callback = function(val) Settings.World.Inventory.Icons = val end})
+        InvSection:Toggle({Name = "Moduls", Flag = "Delta/World/Inventory/Moduls", Value = false,
+            Callback = function(val) Settings.World.Inventory.Moduls = val end})
+        InvSection:Slider({Name = "Show Amount", Flag = "Delta/World/Inventory/ShowAmount",
+            Min = 0, Max = 50, Value = 10,
+            Callback = function(val) Settings.World.Inventory.ShowAmount = val end})
+    end
+end
+
+-- ███████████████████████████████████████████████████████
+-- ВКЛАДКА MISC (без Speed/Jump)
 -- ███████████████████████████████████████████████████████
 local MiscTab = Window:Tab({Name = "Misc"}) do
-    -- Aimbot Section
-    local AimbotSection = MiscTab:Section({Name = "Aimbot", Side = "Left"}) do
-        AimbotSection:Toggle({
-            Name = "Enable Aimbot",
-            Flag = "Delta/Aimbot/Enabled",
+    local MiscSection = MiscTab:Section({Name = "Utilities", Side = "Left"}) do
+        MiscSection:Toggle({Name = "NoClip", Flag = "Delta/Misc/NoClip", Value = false,
+            Callback = function(val) Settings.Misc.NoClip = val end})
+
+        MiscSection:Toggle({
+            Name = "Anti UAC (Experimental)",
+            Flag = "Delta/Misc/AntiUAC",
             Value = false,
-            Callback = function(val) Settings.Aimbot.Enabled = val end
-        }):Keybind({
-            Flag = "Delta/Aimbot/Keybind",
-            Value = "MouseButton2",
-            Mouse = true,
-            Callback = function(key, state) AimbotActive = state end
-        })
-
-        AimbotSection:Toggle({Name = "Team Check", Flag = "Delta/Aimbot/TeamCheck", Value = true,
-            Callback = function(val) Settings.Aimbot.TeamCheck = val end})
-        AimbotSection:Toggle({Name = "Prediction", Flag = "Delta/Aimbot/Prediction", Value = false,
-            Callback = function(val) Settings.Aimbot.Prediction = val end})
-        AimbotSection:Slider({Name = "Smoothness", Flag = "Delta/Aimbot/Smoothness", Min = 1, Max = 100, Value = 30,
-            Callback = function(val) Settings.Aimbot.Smoothness = val end})
-        AimbotSection:Slider({Name = "FOV", Flag = "Delta/Aimbot/FOV", Min = 10, Max = 360, Value = 120,
-            Callback = function(val) Settings.Aimbot.FOV = val end})
-        AimbotSection:Slider({Name = "Max Distance", Flag = "Delta/Aimbot/Distance", Min = 10, Max = 1000, Value = 300,
-            Callback = function(val) Settings.Aimbot.Distance = val end})
-
-        local PartsList = {}
-        for _, part in ipairs(BodyParts) do
-            table.insert(PartsList, {Name = part, Mode = "Button", Value = (part == "Head")})
-        end
-        AimbotSection:Dropdown({
-            Name = "Priority Part",
-            Flag = "Delta/Aimbot/Priority",
-            List = PartsList,
-            Callback = function(val) Settings.Aimbot.Priority = val[1] end
+            Callback = function(val)
+                Settings.Misc.AntiUAC = val
+                if val then
+                    -- Попытка заблокировать UAC RemoteFunction
+                    local uac = ReplicatedStorage:FindFirstChild("UAC")
+                    if uac and uac:IsA("RemoteFunction") then
+                        -- Захукаем InvokeServer и OnClientInvoke
+                        local oldInvoke
+                        oldInvoke = hookfunction(uac.InvokeServer, function(...)
+                            if Settings.Misc.AntiUAC then
+                                return -- блокируем вызов
+                            else
+                                return oldInvoke(...)
+                            end
+                        end)
+                        print("UAC blocked (RemoteFunction)")
+                    else
+                        warn("UAC RemoteFunction not found")
+                    end
+                    -- Также можно заблокировать QuickMove, если нужно
+                end
+            end
         })
     end
-
-    -- Trigger Bot Section
-    local TriggerSection = MiscTab:Section({Name = "Trigger Bot", Side = "Right"}) do
-        TriggerSection:Toggle({
-            Name = "Enable Trigger",
-            Flag = "Delta/Trigger/Enabled",
-            Value = false,
-            Callback = function(val) Settings.Trigger.Enabled = val end
-        }):Keybind({
-            Flag = "Delta/Trigger/Keybind",
-            Mouse = true,
-            Callback = function(key, state) TriggerActive = state end
-        })
-
-        TriggerSection:Slider({Name = "Delay (sec)", Flag = "Delta/Trigger/Delay", Min = 0, Max = 0.5, Precise = 2, Value = 0.1,
-            Callback = function(val) Settings.Trigger.Delay = val end})
-        TriggerSection:Slider({Name = "FOV", Flag = "Delta/Trigger/FOV", Min = 10, Max = 360, Value = 30,
-            Callback = function(val) Settings.Trigger.FOV = val end})
-    end
-
-    -- FOV Circles for Aimbot and Trigger
-    DataHub.Utilities.Drawing.SetupFOV("Aimbot", Window.Flags)
-    DataHub.Utilities.Drawing.SetupFOV("Trigger", Window.Flags)
 end
 
 -- ███████████████████████████████████████████████████████
