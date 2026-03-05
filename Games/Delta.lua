@@ -1,268 +1,315 @@
--- Data Hub : Project Delta Module
+-- Data Hub - Project Delta (Stable Edition)
+-- Game ID: 6483626525
+-- Focus: Aimbot, Trigger, ESP, Misc (без Speed/Jump)
 
-local DataHub = getgenv().DataHub
-if not DataHub then return end
-
-local UI = DataHub.Utilities.UI
-local Physics = DataHub.Utilities.Physics
-local Drawing = DataHub.Utilities.Drawing
-
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
+-- Services
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
 
--------------------------------------------------
--- STATE
--------------------------------------------------
+-- Variables
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
-local Delta = {
-    Toggles = {},
-    Connections = {},
-    ESPObjects = {}
+-- State flags
+local AimbotActive = false
+local TriggerActive = false
+
+-- Settings tables
+local Settings = {
+    Aimbot = {
+        Enabled = false,
+        TeamCheck = true,
+        Prediction = false,
+        Smoothness = 30,
+        FOV = 120,
+        Distance = 300,
+        Priority = "Head"
+    },
+    Trigger = {
+        Enabled = false,
+        Delay = 0.1,
+        FOV = 30
+    },
+    ESP = {
+        Enabled = false,
+        TeamCheck = true,
+        Boxes = true,
+        Names = true,
+        Distance = true,
+        Health = true,
+        Tracers = false
+    },
+    Misc = {
+        NoRecoil = false,
+        NoSpread = false,
+        AutoFire = false
+    }
 }
 
--------------------------------------------------
--- UI
--------------------------------------------------
+-- Body parts
+local BodyParts = {"Head", "HumanoidRootPart", "Torso", "Right Arm", "Left Arm"}
 
-local Window = UI:CreateWindow({
-    Title = "Data Hub - Project Delta",
-    Size = UDim2.new(0,520,0,360)
-})
-
-local PlayerTab = Window:CreateTab("Player")
-local VisualTab = Window:CreateTab("Visuals")
-local MiscTab = Window:CreateTab("Misc")
-
--------------------------------------------------
--- PLAYER FUNCTIONS
--------------------------------------------------
-
-PlayerTab:CreateSlider({
-    Name = "WalkSpeed",
-    Min = 16,
-    Max = 100,
-    Default = 16,
-
-    Callback = function(value)
-
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = value
-        end
-
-    end
-})
-
-PlayerTab:CreateSlider({
-    Name = "JumpPower",
-    Min = 50,
-    Max = 150,
-    Default = 50,
-
-    Callback = function(value)
-
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.JumpPower = value
-        end
-
-    end
-})
-
--------------------------------------------------
--- INFINITE JUMP
--------------------------------------------------
-
-PlayerTab:CreateToggle({
-    Name = "Infinite Jump",
-
-    Callback = function(state)
-
-        Delta.Toggles.InfJump = state
-
-    end
-})
-
-table.insert(
-    Delta.Connections,
-    UserInputService.JumpRequest:Connect(function()
-
-        if not Delta.Toggles.InfJump then
-            return
-        end
-
-        local char = LocalPlayer.Character
-        if not char then return end
-
-        local hum = char:FindFirstChild("Humanoid")
-        if not hum then return end
-
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-
-    end)
-)
-
--------------------------------------------------
--- ESP
--------------------------------------------------
-
-local function CreateESP(player)
-
-    if player == LocalPlayer then return end
-
-    local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = Color3.fromRGB(255,0,0)
-    box.Thickness = 2
-    box.Filled = false
-
-    Delta.ESPObjects[player] = box
-
+-- Проверка на наличие UI-библиотеки
+if not DataHub or not DataHub.Utilities or not DataHub.Utilities.UI then
+    warn("Data Hub UI library not loaded. Cannot create window.")
+    return
 end
 
-local function RemoveESP(player)
-
-    local obj = Delta.ESPObjects[player]
-    if obj then
-        obj:Remove()
-        Delta.ESPObjects[player] = nil
-    end
-
+-- ███████████████████████████████████████████████████████
+-- UI CREATION (with error handling)
+-- ███████████████████████████████████████████████████████
+local Window = nil
+local success, err = pcall(function()
+    Window = DataHub.Utilities.UI:Window({
+        Name = "Data Hub " .. utf8.char(8212) .. " Project Delta",
+        Position = UDim2.new(0.5, -350, 0.5, -300),
+        Size = UDim2.new(0, 700, 0, 600)
+    })
+end)
+if not success then
+    warn("Failed to create window:", err)
+    return
 end
 
-VisualTab:CreateToggle({
-    Name = "Player ESP",
+-- Define tabs inside pcall to catch errors
+pcall(function()
+    -- COMBAT TAB
+    local CombatTab = Window:Tab({Name = "Combat"}) do
+        -- Aimbot Section
+        local AimbotSection = CombatTab:Section({Name = "Aimbot", Side = "Left"}) do
+            AimbotSection:Toggle({
+                Name = "Enable Aimbot",
+                Flag = "Delta/Aimbot/Enabled",
+                Value = false,
+                Callback = function(val) Settings.Aimbot.Enabled = val end
+            }):Keybind({
+                Flag = "Delta/Aimbot/Keybind",
+                Value = "MouseButton2",
+                Mouse = true,
+                Callback = function(key, state) AimbotActive = state end
+            })
 
-    Callback = function(state)
+            AimbotSection:Toggle({Name = "Team Check", Flag = "Delta/Aimbot/TeamCheck", Value = true,
+                Callback = function(val) Settings.Aimbot.TeamCheck = val end})
+            AimbotSection:Toggle({Name = "Prediction", Flag = "Delta/Aimbot/Prediction", Value = false,
+                Callback = function(val) Settings.Aimbot.Prediction = val end})
+            AimbotSection:Slider({Name = "Smoothness", Flag = "Delta/Aimbot/Smoothness", Min = 1, Max = 100, Value = 30, Unit = "%",
+                Callback = function(val) Settings.Aimbot.Smoothness = val end})
+            AimbotSection:Slider({Name = "FOV", Flag = "Delta/Aimbot/FOV", Min = 10, Max = 360, Value = 120,
+                Callback = function(val) Settings.Aimbot.FOV = val end})
+            AimbotSection:Slider({Name = "Max Distance", Flag = "Delta/Aimbot/Distance", Min = 10, Max = 1000, Value = 300, Unit = "studs",
+                Callback = function(val) Settings.Aimbot.Distance = val end})
 
-        Delta.Toggles.ESP = state
-
-        if state then
-
-            for _,plr in pairs(Players:GetPlayers()) do
-                CreateESP(plr)
+            local PartsList = {}
+            for _, part in ipairs(BodyParts) do
+                table.insert(PartsList, {Name = part, Mode = "Button", Value = (part == "Head")})
             end
-
-        else
-
-            for _,obj in pairs(Delta.ESPObjects) do
-                obj:Remove()
-            end
-
-            Delta.ESPObjects = {}
-
+            AimbotSection:Dropdown({
+                Name = "Priority Part",
+                Flag = "Delta/Aimbot/Priority",
+                List = PartsList,
+                Callback = function(val) Settings.Aimbot.Priority = val[1] end
+            })
         end
 
+        -- Trigger Bot Section
+        local TriggerSection = CombatTab:Section({Name = "Trigger Bot", Side = "Right"}) do
+            TriggerSection:Toggle({
+                Name = "Enable Trigger",
+                Flag = "Delta/Trigger/Enabled",
+                Value = false,
+                Callback = function(val) Settings.Trigger.Enabled = val end
+            }):Keybind({
+                Flag = "Delta/Trigger/Keybind",
+                Mouse = true,
+                Callback = function(key, state) TriggerActive = state end
+            })
+
+            TriggerSection:Slider({Name = "Delay (sec)", Flag = "Delta/Trigger/Delay", Min = 0, Max = 0.5, Precise = 2, Value = 0.1,
+                Callback = function(val) Settings.Trigger.Delay = val end})
+            TriggerSection:Slider({Name = "FOV", Flag = "Delta/Trigger/FOV", Min = 10, Max = 360, Value = 30,
+                Callback = function(val) Settings.Trigger.FOV = val end})
+        end
+
+        -- FOV Circles (visual)
+        DataHub.Utilities.Drawing.SetupFOV("Aimbot", Window.Flags)
+        DataHub.Utilities.Drawing.SetupFOV("Trigger", Window.Flags)
     end
-})
 
--------------------------------------------------
--- ESP UPDATE LOOP
--------------------------------------------------
+    -- VISUALS TAB (ESP)
+    local VisualsTab = Window:Tab({Name = "Visuals"}) do
+        -- Player ESP (using built-in ESPSection)
+        local ESPSection = DataHub.Utilities:ESPSection(Window, "Player ESP", "Delta/ESP", true, false, true, true, true, false) do
+            ESPSection:Colorpicker({Name = "Ally Color", Flag = "Delta/ESP/Ally", Value = {0.33, 0.66, 1, 0, false}})
+            ESPSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/ESP/Enemy", Value = {1, 0.33, 0.33, 0, false}})
+            ESPSection:Toggle({Name = "Team Check", Flag = "Delta/ESP/TeamCheck", Value = true,
+                Callback = function(val) Settings.ESP.TeamCheck = val end})
+        end
+    end
 
-table.insert(
-    Delta.Connections,
-    RunService.RenderStepped:Connect(function()
+    -- MISC TAB (without Speed/Jump)
+    local MiscTab = Window:Tab({Name = "Misc"}) do
+        -- Weapon Section
+        local WeaponSection = MiscTab:Section({Name = "Weapon", Side = "Left"}) do
+            WeaponSection:Toggle({Name = "No Recoil", Flag = "Delta/NoRecoil", Value = false,
+                Callback = function(val) Settings.Misc.NoRecoil = val end})
+            WeaponSection:Toggle({Name = "No Spread", Flag = "Delta/NoSpread", Value = false,
+                Callback = function(val) Settings.Misc.NoSpread = val end})
+            WeaponSection:Toggle({Name = "Auto Fire", Flag = "Delta/AutoFire", Value = false,
+                Callback = function(val) Settings.Misc.AutoFire = val end})
+        end
+    end
 
-        if not Delta.Toggles.ESP then
-            return
+    -- Settings section (from utilities)
+    DataHub.Utilities:SettingsSection(Window, "RightShift", false)
+end)
+
+DataHub.Utilities.InitAutoLoad(Window)
+
+-- ███████████████████████████████████████████████████████
+-- CORE FUNCTIONS (with nil checks)
+-- ███████████████████████████████████████████████████████
+
+local function IsEnemy(player)
+    if player == LocalPlayer then return false end
+    if not player.Character then return false end
+    -- In Project Delta, teams are determined by Team property
+    if player.Team == nil then return true end -- neutral
+    return LocalPlayer.Team ~= player.Team
+end
+
+local function GetClosestTarget(fovRadius, maxDist, checkTeam, prediction, priorityPart)
+    if not Camera then return nil end
+    local mousePos = UserInputService:GetMouseLocation()
+    local cameraPos = Camera.CFrame.Position
+    local closestDist = fovRadius
+    local closestTarget = nil
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        if checkTeam and not IsEnemy(player) then continue end
+
+        local character = player.Character
+        if not character then continue end
+
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then continue end
+
+        local part = character:FindFirstChild(priorityPart) or character:FindFirstChild("HumanoidRootPart")
+        if not part then continue end
+
+        local partPos = part.Position
+        local dist = (partPos - cameraPos).Magnitude
+        if dist > maxDist then continue end
+
+        -- Simple prediction (approximate bullet speed)
+        if prediction then
+            partPos = partPos + part.AssemblyLinearVelocity * (dist / 2000)
         end
 
-        for player,box in pairs(Delta.ESPObjects) do
+        local screenPos, onScreen = Camera:WorldToViewportPoint(partPos)
+        if not onScreen then continue end
 
-            local char = player.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local screenVec = Vector2.new(screenPos.X, screenPos.Y)
+        local fovDist = (screenVec - mousePos).Magnitude
 
-            if hrp then
-
-                local pos, visible =
-                    workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
-
-                box.Visible = visible
-
-                box.Size = Vector2.new(40,60)
-                box.Position = Vector2.new(pos.X-20,pos.Y-30)
-
-            else
-
-                box.Visible = false
-
-            end
-
+        if fovDist < closestDist then
+            closestDist = fovDist
+            closestTarget = {player, part, screenVec}
         end
+    end
+    return closestTarget
+end
 
-    end)
-)
+-- ███████████████████████████████████████████████████████
+-- AIMBOT LOOP
+-- ███████████████████████████████████████████████████████
+RunService.RenderStepped:Connect(function()
+    if not (Settings.Aimbot.Enabled and AimbotActive) then return end
+    if not Window then return end -- safety
 
--------------------------------------------------
--- PLAYER JOIN
--------------------------------------------------
-
-table.insert(
-    Delta.Connections,
-    Players.PlayerAdded:Connect(function(player)
-
-        if Delta.Toggles.ESP then
-            CreateESP(player)
-        end
-
-    end)
-)
-
-table.insert(
-    Delta.Connections,
-    Players.PlayerRemoving:Connect(function(player)
-
-        RemoveESP(player)
-
-    end)
-)
-
--------------------------------------------------
--- MISC
--------------------------------------------------
-
-MiscTab:CreateButton({
-    Name = "Rejoin Server",
-
-    Callback = function()
-
-        game:GetService("TeleportService"):Teleport(
-            game.PlaceId,
-            LocalPlayer
+    local target = GetClosestTarget(
+        Settings.Aimbot.FOV,
+        Settings.Aimbot.Distance,
+        Settings.Aimbot.TeamCheck,
+        Settings.Aimbot.Prediction,
+        Settings.Aimbot.Priority
+    )
+    if target then
+        local mousePos = UserInputService:GetMouseLocation()
+        local smooth = Settings.Aimbot.Smoothness / 100
+        mousemoverel(
+            (target[3].X - mousePos.X) * smooth,
+            (target[3].Y - mousePos.Y) * smooth
         )
-
     end
-})
+end)
 
--------------------------------------------------
--- CLEANUP
--------------------------------------------------
+-- ███████████████████████████████████████████████████████
+-- TRIGGER BOT LOOP
+-- ███████████████████████████████████████████████████████
+RunService.RenderStepped:Connect(function()
+    if not (Settings.Trigger.Enabled and TriggerActive) then return end
+    if not Window then return end
 
-function Delta:Unload()
+    local target = GetClosestTarget(
+        Settings.Trigger.FOV,
+        300, -- fixed distance
+        true,
+        false,
+        "Head"
+    )
+    if target then
+        task.wait(Settings.Trigger.Delay)
+        mouse1press()
+        task.wait(0.05)
+        mouse1release()
+    end
+end)
 
-    for _,con in pairs(self.Connections) do
+-- ███████████████████████████████████████████████████████
+-- ESP SETUP (players only)
+-- ███████████████████████████████████████████████████████
+if Window then
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            pcall(function()
+                DataHub.Utilities.Drawing:AddESP(player, "Player", "Delta/ESP", Window.Flags)
+            end)
+        end
+    end
+
+    Players.PlayerAdded:Connect(function(player)
+        if player ~= LocalPlayer then
+            pcall(function()
+                DataHub.Utilities.Drawing:AddESP(player, "Player", "Delta/ESP", Window.Flags)
+            end)
+        end
+    end)
+
+    Players.PlayerRemoving:Connect(function(player)
         pcall(function()
-            con:Disconnect()
+            DataHub.Utilities.Drawing:RemoveESP(player)
         end)
-    end
-
-    for _,obj in pairs(self.ESPObjects) do
-        pcall(function()
-            obj:Remove()
-        end)
-    end
-
+    end)
 end
 
--------------------------------------------------
--- NOTIFICATION
--------------------------------------------------
+-- Camera update
+Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    Camera = Workspace.CurrentCamera
+end)
 
-UI:Push({
-    Title = "Data Hub",
-    Description = "Project Delta module loaded",
-    Duration = 10
-})
+-- ███████████████████████████████████████████████████████
+-- LOADING COMPLETE NOTIFICATION
+-- ███████████████████████████████████████████████████████
+pcall(function()
+    DataHub.Utilities.UI:Push({
+        Title = "Data Hub - Project Delta",
+        Description = "Script loaded successfully!\nPress RightShift to open menu.",
+        Duration = 5
+    })
+end)
