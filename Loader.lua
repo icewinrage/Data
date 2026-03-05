@@ -61,7 +61,7 @@ getgenv().DataHub = {
         ["3495983524"] = { Name = "Apocalypse Rising 2 Dev.",   Script = "Games/AR2.lua"  },
         ["1054526971"] = { Name = "Blackhawk Rescue Mission 5", Script = "Games/BRM5.lua" },
         ["1793802713"] = { Name = "Deadline",                   Script = "Games/DL.lua"   },
-        ["6483626525"] = { Name = "Project Delta",              Script = "Games/Delta.lua" }
+        ["2862098693"] = { Name = "Project Delta",              Script = "Games/Delta.lua" }
     }
 }
 
@@ -91,4 +91,5 @@ DataHub.Utilities.UI:Push({
     Description = DataHub.Game.Name .. " loaded!\n\nThis script is open sourced\nIf you have paid for this script\nOr had to go thru ads\nYou have been scammed.",
     Duration = NotificationTime
 })
+
 
