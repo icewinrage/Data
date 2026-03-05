@@ -1,6 +1,5 @@
-local Source = "%sLoader.lua"
-local Branch, NotificationTime, IsLocal = "%s", %s, %s
+local Source = "https://raw.githubusercontent.com/icewinrage/Data/main/Loader.lua"
+local Branch, NotificationTime, IsLocal = "main", %s, %s
 
-loadstring(IsLocal and readfile("Data/Loader.lua")
+loadstring(IsLocal and readfile("DataHub/Loader.lua")
 or game:HttpGet(Source), "Loader")(Branch, NotificationTime, IsLocal)
-
