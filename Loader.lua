@@ -1,4 +1,4 @@
---// Data Hub Ultimate Loader
+--// Data Hub Ultimate Loader v2
 
 if getgenv().DataHub and getgenv().DataHub.Loaded then
     return
@@ -11,8 +11,9 @@ local LocalPlayer = Players.LocalPlayer
 
 local BASE_URL = "https://raw.githubusercontent.com/icewinrage/Data/main/"
 
--- кеш
-local CACHE = {}
+-- глобальный кеш (переживает телепорты)
+getgenv().DATAHUB_CACHE = getgenv().DATAHUB_CACHE or {}
+local CACHE = getgenv().DATAHUB_CACHE
 
 -- безопасный http
 local function httpget(url)
@@ -37,11 +38,11 @@ end
 -- загрузка модулей
 local function loadmodule(path,name)
 
-    local url = BASE_URL .. path
+    local url = BASE_URL..path
     local src = httpget(url)
 
     if not src then
-        error("Cannot load "..name)
+        error("Failed loading "..name)
     end
 
     local fn,err = loadstring(src,name)
@@ -53,7 +54,7 @@ local function loadmodule(path,name)
     return fn()
 end
 
--- глобальная таблица
+-- DataHub
 local DataHub = {
     Loaded = false,
     Utilities = {},
@@ -76,19 +77,44 @@ local DataHub = {
 
 getgenv().DataHub = DataHub
 
--- загрузка utilities
-DataHub.Utilities.Main = loadmodule("Utilities/Main.lua","Main")
-DataHub.Utilities.UI = loadmodule("Utilities/UI.lua","UI")
-DataHub.Utilities.Physics = loadmodule("Utilities/Physics.lua","Physics")
-DataHub.Utilities.Drawing = loadmodule("Utilities/Drawing.lua","Drawing")
+--// параллельная загрузка utilities
+
+local threads = {}
+
+local function thread(fn)
+    local t = task.spawn(fn)
+    table.insert(threads,t)
+end
+
+thread(function()
+    DataHub.Utilities.Main = loadmodule("Utilities/Main.lua","Main")
+end)
+
+thread(function()
+    DataHub.Utilities.UI = loadmodule("Utilities/UI.lua","UI")
+end)
+
+thread(function()
+    DataHub.Utilities.Physics = loadmodule("Utilities/Physics.lua","Physics")
+end)
+
+thread(function()
+    DataHub.Utilities.Drawing = loadmodule("Utilities/Drawing.lua","Drawing")
+end)
 
 -- курсор
-DataHub.Cursor = httpget(BASE_URL.."Utilities/ArrowCursor.png")
+thread(function()
+    DataHub.Cursor = httpget(BASE_URL.."Utilities/ArrowCursor.png")
+end)
 
--- loadstring для телепорта
-DataHub.Loadstring = httpget(BASE_URL.."Utilities/Loadstring")
+-- loadstring
+thread(function()
+    DataHub.Loadstring = httpget(BASE_URL.."Utilities/Loadstring")
+end)
 
--- teleport поддержка
+task.wait()
+
+-- teleport persistence
 local queue = queue_on_teleport
 
 if queue then
@@ -103,7 +129,7 @@ if queue then
 
 end
 
--- определяем игру
+-- игра
 local id = tostring(game.GameId)
 local gameinfo = DataHub.Games[id]
 
