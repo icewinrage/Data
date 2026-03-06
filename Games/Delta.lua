@@ -1,7 +1,7 @@
--- Data Hub - Project Delta (Final Boosted ESP)
+-- Data Hub - Project Delta (UnnamedESP Integration)
 -- Game ID: 2862098693
--- Features: Custom ESP (players, items, quests, vehicles, death history), RageBot, Gun Mods, World, Misc
--- Улучшена видимость на дальних дистанциях: увеличены размеры и толщина линий
+-- Features: RageBot, Gun Mods, World, Misc, and UnnamedESP (powerful ESP)
+-- All ESP functionality is handled by UnnamedESP, fully integrated into Data Hub menu.
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
@@ -52,54 +52,6 @@ local Settings = {
         BulletCount = 10
     },
     Visuals = {
-        General = {
-            Enabled = false,
-            IncludeNPC = false,
-            ScaleType = "Dynamic",
-            MaxDistance = 2000 -- увеличено для теста
-        },
-        Box = {
-            Enabled = false,
-            Color = {1, 1, 1, 0, false}
-        },
-        Name = {
-            Enabled = false,
-            Color = {1, 1, 1, 0, false}
-        },
-        Tracers = {
-            Enabled = false,
-            Mode = "From Bottom"
-        },
-        Distance = {
-            Enabled = false,
-            Color = {1, 1, 1, 0, false},
-            Mode = "Studs"
-        },
-        Health = {
-            Bar = false,
-            ColorMode = "Green"
-        },
-        ItemText = {
-            Enabled = false,
-            Color = {1, 1, 1, 0, false},
-            Distance = 100
-        },
-        Skeleton = {
-            Enabled = false,
-            Color = {1, 1, 1, 0, false}
-        },
-        DeathHistory = {
-            Enabled = false,
-            Color = {1, 0, 0, 0, false}
-        },
-        QuestItems = {
-            Enabled = false,
-            Color = {0, 1, 0, 0, false}
-        },
-        Vehicles = {
-            Enabled = false,
-            Color = {0, 0, 1, 0, false}
-        },
         Zoom = {
             Enabled = false,
             Level = 20
@@ -258,104 +210,10 @@ local GunTab = Window:Tab({Name = "Gun Mods"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: VISUALS
+-- UI: VISUALS (UnnamedESP integration)
 -- ███████████████████████████████████████████████████████
 local VisualsTab = Window:Tab({Name = "Visuals"}) do
-    local GeneralSection = VisualsTab:Section({Name = "General", Side = "Left"}) do
-        GeneralSection:Toggle({Name = "ESP Enabled", Flag = "Delta/Visuals/General/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.General.Enabled = val end})
-        GeneralSection:Toggle({Name = "Include NPC", Flag = "Delta/Visuals/General/IncludeNPC", Value = false,
-            Callback = function(val) Settings.Visuals.General.IncludeNPC = val end})
-        GeneralSection:Dropdown({Name = "Scale Type", Flag = "Delta/Visuals/General/ScaleType", List = {
-            {Name = "Static", Mode = "Button", Value = false},
-            {Name = "Dynamic", Mode = "Button", Value = true},
-            {Name = "Bounding", Mode = "Button"}
-        }, Callback = function(selected) Settings.Visuals.General.ScaleType = selected[1] end})
-        GeneralSection:Slider({Name = "Max Distance", Flag = "Delta/Visuals/General/MaxDistance", Min = 0, Max = 5000, Value = 2000,
-            Callback = function(val) Settings.Visuals.General.MaxDistance = val end})
-    end
-
-    local BoxSection = VisualsTab:Section({Name = "Box", Side = "Left"}) do
-        BoxSection:Toggle({Name = "Box", Flag = "Delta/Visuals/Box/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.Box.Enabled = val end})
-        BoxSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Box/Color", Value = Settings.Visuals.Box.Color,
-            Callback = function(val) Settings.Visuals.Box.Color = val end})
-    end
-
-    local NameSection = VisualsTab:Section({Name = "Name", Side = "Left"}) do
-        NameSection:Toggle({Name = "Nametag", Flag = "Delta/Visuals/Name/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.Name.Enabled = val end})
-        NameSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Name/Color", Value = Settings.Visuals.Name.Color,
-            Callback = function(val) Settings.Visuals.Name.Color = val end})
-    end
-
-    local TracersSection = VisualsTab:Section({Name = "Tracers", Side = "Left"}) do
-        TracersSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Tracers/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.Tracers.Enabled = val end})
-        TracersSection:Dropdown({Name = "Mode", Flag = "Delta/Visuals/Tracers/Mode", List = {
-            {Name = "From Bottom", Mode = "Button", Value = true},
-            {Name = "From Mouse", Mode = "Button"}
-        }, Callback = function(selected) Settings.Visuals.Tracers.Mode = selected[1] end})
-    end
-
-    local DistanceSection = VisualsTab:Section({Name = "Distance", Side = "Left"}) do
-        DistanceSection:Toggle({Name = "Distance", Flag = "Delta/Visuals/Distance/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.Distance.Enabled = val end})
-        DistanceSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Distance/Color", Value = Settings.Visuals.Distance.Color,
-            Callback = function(val) Settings.Visuals.Distance.Color = val end})
-        DistanceSection:Dropdown({Name = "Mode", Flag = "Delta/Visuals/Distance/Mode", List = {
-            {Name = "Studs", Mode = "Button", Value = true},
-            {Name = "Meters", Mode = "Button"}
-        }, Callback = function(selected) Settings.Visuals.Distance.Mode = selected[1] end})
-    end
-
-    local HealthSection = VisualsTab:Section({Name = "Health", Side = "Right"}) do
-        HealthSection:Toggle({Name = "Health Bar", Flag = "Delta/Visuals/Health/Bar", Value = false,
-            Callback = function(val) Settings.Visuals.Health.Bar = val end})
-        HealthSection:Dropdown({Name = "Color Mode", Flag = "Delta/Visuals/Health/ColorMode", List = {
-            {Name = "Red", Mode = "Button", Value = false},
-            {Name = "Green", Mode = "Button", Value = true},
-            {Name = "RGB", Mode = "Button"}
-        }, Callback = function(selected) Settings.Visuals.Health.ColorMode = selected[1] end})
-    end
-
-    local SkeletonSection = VisualsTab:Section({Name = "Skeleton", Side = "Right"}) do
-        SkeletonSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Skeleton/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.Skeleton.Enabled = val end})
-        SkeletonSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Skeleton/Color", Value = Settings.Visuals.Skeleton.Color,
-            Callback = function(val) Settings.Visuals.Skeleton.Color = val end})
-    end
-
-    local ItemTextSection = VisualsTab:Section({Name = "Item Text", Side = "Right"}) do
-        ItemTextSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/ItemText/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.ItemText.Enabled = val end})
-        ItemTextSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/ItemText/Color", Value = Settings.Visuals.ItemText.Color,
-            Callback = function(val) Settings.Visuals.ItemText.Color = val end})
-        ItemTextSection:Slider({Name = "Distance", Flag = "Delta/Visuals/ItemText/Distance", Min = 30, Max = 1000, Value = 100,
-            Callback = function(val) Settings.Visuals.ItemText.Distance = val end})
-    end
-
-    local QuestSection = VisualsTab:Section({Name = "Quest Items", Side = "Right"}) do
-        QuestSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/QuestItems/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.QuestItems.Enabled = val end})
-        QuestSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/QuestItems/Color", Value = Settings.Visuals.QuestItems.Color,
-            Callback = function(val) Settings.Visuals.QuestItems.Color = val end})
-    end
-
-    local VehicleSection = VisualsTab:Section({Name = "Vehicles", Side = "Right"}) do
-        VehicleSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Vehicles/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.Vehicles.Enabled = val end})
-        VehicleSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Vehicles/Color", Value = Settings.Visuals.Vehicles.Color,
-            Callback = function(val) Settings.Visuals.Vehicles.Color = val end})
-    end
-
-    local DeathSection = VisualsTab:Section({Name = "Death History", Side = "Right"}) do
-        DeathSection:Toggle({Name = "Death History ESP", Flag = "Delta/Visuals/DeathHistory/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.DeathHistory.Enabled = val end})
-        DeathSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/DeathHistory/Color", Value = Settings.Visuals.DeathHistory.Color,
-            Callback = function(val) Settings.Visuals.DeathHistory.Color = val end})
-    end
-
+    -- Zoom Section (kept separate)
     local ZoomSection = VisualsTab:Section({Name = "Zoom", Side = "Right"}) do
         ZoomSection:Toggle({
             Name = "Enable Zoom",
@@ -371,6 +229,173 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Max = 40,
             Value = 20,
             Callback = function(val) Settings.Visuals.Zoom.Level = val end
+        })
+    end
+
+    -- UnnamedESP control section
+    local UnnamedSection = VisualsTab:Section({Name = "Unnamed ESP", Side = "Left"}) do
+
+        UnnamedSection:Toggle({
+            Name = "Enable Unnamed ESP",
+            Flag = "Delta/UnnamedESP/Enabled",
+            Value = false,
+            Callback = function(val)
+                if not UnnamedESP_Loaded then
+                    LoadUnnamedESPWithDeltaSupport()
+                end
+                if shared.UESP_Config then
+                    shared.UESP_Config.Enabled = val
+                end
+            end
+        })
+
+        UnnamedSection:Toggle({
+            Name = "Player Boxes",
+            Flag = "Delta/UnnamedESP/Boxes",
+            Value = true,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.Boxes = val end
+            end
+        })
+
+        UnnamedSection:Toggle({
+            Name = "Player Names",
+            Flag = "Delta/UnnamedESP/Names",
+            Value = true,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.Names = val end
+            end
+        })
+
+        UnnamedSection:Toggle({
+            Name = "Player Health",
+            Flag = "Delta/UnnamedESP/Health",
+            Value = true,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.Health = val end
+            end
+        })
+
+        UnnamedSection:Toggle({
+            Name = "Player Weapons",
+            Flag = "Delta/UnnamedESP/Weapons",
+            Value = true,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.Weapons = val end
+            end
+        })
+
+        UnnamedSection:Toggle({
+            Name = "Player Distance",
+            Flag = "Delta/UnnamedESP/Distance",
+            Value = true,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.Distance = val end
+            end
+        })
+
+        UnnamedSection:Toggle({
+            Name = "Skeleton",
+            Flag = "Delta/UnnamedESP/Skeleton",
+            Value = false,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.Skeleton = val end
+            end
+        })
+
+        UnnamedSection:Toggle({
+            Name = "Tracers",
+            Flag = "Delta/UnnamedESP/Tracers",
+            Value = false,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.Tracers = val end
+            end
+        })
+
+        UnnamedSection:Divider({Text = "Object ESP"})
+
+        UnnamedSection:Toggle({
+            Name = "Item Text (Containers)",
+            Flag = "Delta/UnnamedESP/ItemText",
+            Value = false,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.ItemText = val end
+            end
+        })
+
+        UnnamedSection:Toggle({
+            Name = "Quest Items",
+            Flag = "Delta/UnnamedESP/QuestItems",
+            Value = false,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.QuestItems = val end
+            end
+        })
+
+        UnnamedSection:Toggle({
+            Name = "Vehicles",
+            Flag = "Delta/UnnamedESP/Vehicles",
+            Value = false,
+            Callback = function(val)
+                if shared.UESP_Config then shared.UESP_Config.Vehicles = val end
+            end
+        })
+
+        UnnamedSection:Divider({Text = "Colors"})
+
+        UnnamedSection:Colorpicker({
+            Name = "Ally Color",
+            Flag = "Delta/UnnamedESP/AllyColor",
+            Value = {0, 1, 0, 0, false},
+            Callback = function(hsv, color)
+                if shared.UESP_Config then shared.UESP_Config.AllyColor = color end
+            end
+        })
+
+        UnnamedSection:Colorpicker({
+            Name = "Enemy Color",
+            Flag = "Delta/UnnamedESP/EnemyColor",
+            Value = {1, 0, 0, 0, false},
+            Callback = function(hsv, color)
+                if shared.UESP_Config then shared.UESP_Config.EnemyColor = color end
+            end
+        })
+
+        UnnamedSection:Colorpicker({
+            Name = "Item Color",
+            Flag = "Delta/UnnamedESP/ItemColor",
+            Value = {0.5, 1, 0.5, 0, false},
+            Callback = function(hsv, color)
+                if shared.UESP_Config then shared.UESP_Config.ItemColor = color end
+            end
+        })
+
+        UnnamedSection:Colorpicker({
+            Name = "Quest Color",
+            Flag = "Delta/UnnamedESP/QuestColor",
+            Value = {0.2, 0.8, 1, 0, false},
+            Callback = function(hsv, color)
+                if shared.UESP_Config then shared.UESP_Config.QuestColor = color end
+            end
+        })
+
+        UnnamedSection:Colorpicker({
+            Name = "Vehicle Color",
+            Flag = "Delta/UnnamedESP/VehicleColor",
+            Value = {1, 0.5, 0, 0, false},
+            Callback = function(hsv, color)
+                if shared.UESP_Config then shared.UESP_Config.VehicleColor = color end
+            end
+        })
+
+        UnnamedSection:Button({
+            Name = "Reload Unnamed ESP",
+            Callback = function()
+                if UnnamedESP_Loaded then
+                    UnnamedESP_Loaded = false
+                end
+                LoadUnnamedESPWithDeltaSupport()
+            end
         })
     end
 end
@@ -458,7 +483,7 @@ DataHub.Utilities:SettingsSection(Window, "RightShift", false)
 DataHub.Utilities.InitAutoLoad(Window)
 
 -- ███████████████████████████████████████████████████████
--- PROJECT DELTA SPECIFIC FUNCTIONS
+-- PROJECT DELTA SPECIFIC FUNCTIONS (for RageBot etc.)
 -- ███████████████████████████████████████████████████████
 
 local function GetPlayerGameplayVars(player)
@@ -493,559 +518,106 @@ local function IsEnemy(player)
     return player ~= LocalPlayer
 end
 
--- ███████████████████████████████████████████████████████
--- ESP SYSTEM (адаптивные размеры)
--- ███████████████████████████████████████████████████████
-
-local function newLine()
-    return Drawing.new("Line")
-end
-
-local function newText()
-    return Drawing.new("Text")
-end
-
-local PlayerESP = {}
-
-local function CreatePlayerESP(player)
-    if PlayerESP[player] then return end
-    local esp = {
-        BoxLines = { newLine(), newLine(), newLine(), newLine() },
-        Name = newText(),
-        Distance = newText(),
-        Tracer = newLine(),
-        HealthBar = { newLine(), newLine() },
-        SkeletonLines = {}
-    }
-
-    -- Текст
-    esp.Name.Size = 16
-    esp.Name.Center = true
-    esp.Name.Outline = true
-    esp.Name.Font = 2
-    esp.Distance.Size = 14
-    esp.Distance.Center = true
-    esp.Distance.Outline = true
-    esp.Distance.Font = 2
-
-    -- Толщина линий
-    for _, line in ipairs(esp.BoxLines) do
-        line.Thickness = 3
-    end
-    esp.Tracer.Thickness = 2
-    esp.HealthBar[1].Thickness = 3
-    esp.HealthBar[1].Color = Color3.new(0,0,0)
-    esp.HealthBar[2].Thickness = 3
-    for i = 1, 12 do
-        local line = newLine()
-        line.Thickness = 2
-        esp.SkeletonLines[i] = line
-    end
-
-    PlayerESP[player] = esp
-end
-
-local function RemovePlayerESP(player)
-    local esp = PlayerESP[player]
-    if not esp then return end
-    for _, line in ipairs(esp.BoxLines) do line:Destroy() end
-    esp.Name:Destroy()
-    esp.Distance:Destroy()
-    esp.Tracer:Destroy()
-    for _, line in ipairs(esp.HealthBar) do line:Destroy() end
-    for _, line in ipairs(esp.SkeletonLines) do line:Destroy() end
-    PlayerESP[player] = nil
-end
-
-local function UpdatePlayerESP(player)
-    local esp = PlayerESP[player]
-    if not esp then return end
-
-    local char = player.Character
-    if not char then
-        -- скрыть всё
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
-        esp.Name.Visible = false
-        esp.Distance.Visible = false
-        esp.Tracer.Visible = false
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
-        return
-    end
-
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
-        esp.Name.Visible = false
-        esp.Distance.Visible = false
-        esp.Tracer.Visible = false
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
-        return
-    end
-
-    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-    if not onScreen then
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
-        esp.Name.Visible = false
-        esp.Distance.Visible = false
-        esp.Tracer.Visible = false
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
-        return
-    end
-
-    local dist = (root.Position - Camera.CFrame.Position).Magnitude
-    if dist > Settings.Visuals.General.MaxDistance then
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
-        esp.Name.Visible = false
-        esp.Distance.Visible = false
-        esp.Tracer.Visible = false
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
-        return
-    end
-
-    local health = GetRealHealth(player)
-    local healthPercent = health / 100
-
-    local function HSVToColor(hsv)
-        return Color3.fromHSV(hsv[1] or 0, hsv[2] or 1, hsv[3] or 1)
-    end
-
-    local boxColor = HSVToColor(Settings.Visuals.Box.Color)
-    local nameColor = HSVToColor(Settings.Visuals.Name.Color)
-    local distanceColor = HSVToColor(Settings.Visuals.Distance.Color)
-    local skeletonColor = HSVToColor(Settings.Visuals.Skeleton.Color)
-
-    -- Box: проекция размера модели с ограничениями
-    if Settings.Visuals.Box.Enabled then
-        local size = char:GetExtentsSize()
-        -- Проекция размера на экран
-        local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
-        local boxWidth = math.clamp(projSize.X, 20, 150)
-        local boxHeight = math.clamp(projSize.Y, 30, 200)
-        local pos = Vector2.new(screenPos.X - boxWidth/2, screenPos.Y - boxHeight/2)
-        local lines = esp.BoxLines
-        lines[1].From = pos
-        lines[1].To = pos + Vector2.new(boxWidth, 0)
-        lines[1].Color = boxColor
-        lines[1].Visible = true
-        lines[2].From = pos + Vector2.new(boxWidth, 0)
-        lines[2].To = pos + Vector2.new(boxWidth, boxHeight)
-        lines[2].Color = boxColor
-        lines[2].Visible = true
-        lines[3].From = pos + Vector2.new(boxWidth, boxHeight)
-        lines[3].To = pos + Vector2.new(0, boxHeight)
-        lines[3].Color = boxColor
-        lines[3].Visible = true
-        lines[4].From = pos + Vector2.new(0, boxHeight)
-        lines[4].To = pos
-        lines[4].Color = boxColor
-        lines[4].Visible = true
-    else
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
-    end
-
-    -- Name
-    if Settings.Visuals.Name.Enabled then
-        esp.Name.Visible = true
-        esp.Name.Text = player.Name
-        esp.Name.Color = nameColor
-        esp.Name.Position = Vector2.new(screenPos.X, screenPos.Y - 50)
-    else
-        esp.Name.Visible = false
-    end
-
-    -- Distance
-    if Settings.Visuals.Distance.Enabled then
-        esp.Distance.Visible = true
-        local unit = Settings.Visuals.Distance.Mode == "Meters" and "m" or "studs"
-        esp.Distance.Text = string.format("%.0f %s", dist, unit)
-        esp.Distance.Color = distanceColor
-        esp.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + 30)
-    else
-        esp.Distance.Visible = false
-    end
-
-    -- Tracers
-    if Settings.Visuals.Tracers.Enabled then
-        local fromPos
-        if Settings.Visuals.Tracers.Mode == "From Mouse" then
-            fromPos = UserInputService:GetMouseLocation()
-        else
-            fromPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-        end
-        esp.Tracer.From = fromPos
-        esp.Tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-        esp.Tracer.Color = boxColor
-        esp.Tracer.Visible = true
-    else
-        esp.Tracer.Visible = false
-    end
-
-    -- Health Bar (привязан к высоте бокса)
-    if Settings.Visuals.Health.Bar and Settings.Visuals.Box.Enabled then
-        local size = char:GetExtentsSize()
-        local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
-        local boxHeight = math.clamp(projSize.Y, 30, 200)
-        local boxWidth = math.clamp(projSize.X, 20, 150)
-        local boxPos = Vector2.new(screenPos.X - boxWidth/2, screenPos.Y - boxHeight/2)
-
-        local barX = boxPos.X - 8
-        local barY = boxPos.Y
-        esp.HealthBar[1].From = Vector2.new(barX, barY)
-        esp.HealthBar[1].To = Vector2.new(barX, barY + boxHeight)
-        esp.HealthBar[1].Visible = true
-
-        local fillHeight = boxHeight * healthPercent
-        esp.HealthBar[2].From = Vector2.new(barX, barY + boxHeight)
-        esp.HealthBar[2].To = Vector2.new(barX, barY + boxHeight - fillHeight)
-        if Settings.Visuals.Health.ColorMode == "Green" then
-            esp.HealthBar[2].Color = Color3.new(0,1,0)
-        elseif Settings.Visuals.Health.ColorMode == "Red" then
-            esp.HealthBar[2].Color = Color3.new(1,0,0)
-        else
-            esp.HealthBar[2].Color = Color3.new(1 - healthPercent, healthPercent, 0)
-        end
-        esp.HealthBar[2].Visible = true
-    else
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-    end
-
-    -- Skeleton (толщина фиксирована)
-    if Settings.Visuals.Skeleton.Enabled then
-        local head = char:FindFirstChild("Head")
-        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-        local rarm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm")
-        local larm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftUpperArm")
-        local rleg = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightUpperLeg")
-        local lleg = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftUpperLeg")
-        local rhand = char:FindFirstChild("RightHand")
-        local lhand = char:FindFirstChild("LeftHand")
-        local rfoot = char:FindFirstChild("RightFoot")
-        local lfoot = char:FindFirstChild("LeftFoot")
-
-        local function partPos(part)
-            if not part then return nil end
-            local pos, on = Camera:WorldToViewportPoint(part.Position)
-            if on then return Vector2.new(pos.X, pos.Y) end
-            return nil
-        end
-
-        local lines = esp.SkeletonLines
-        local idx = 1
-
-        local neckPos = head and partPos(head)
-        local torsoPos = torso and partPos(torso)
-        if head and torso and neckPos and torsoPos then
-            lines[idx].From = neckPos
-            lines[idx].To = torsoPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-
-        local rarmPos = rarm and partPos(rarm)
-        local larmPos = larm and partPos(larm)
-        if torso and rarmPos then
-            lines[idx].From = torsoPos
-            lines[idx].To = rarmPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        if torso and larmPos then
-            lines[idx].From = torsoPos
-            lines[idx].To = larmPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-
-        local rhandPos = rhand and partPos(rhand)
-        local lhandPos = lhand and partPos(lhand)
-        if rarmPos and rhandPos then
-            lines[idx].From = rarmPos
-            lines[idx].To = rhandPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        if larmPos and lhandPos then
-            lines[idx].From = larmPos
-            lines[idx].To = lhandPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-
-        local rlegPos = rleg and partPos(rleg)
-        local llegPos = lleg and partPos(lleg)
-        if torso and rlegPos then
-            lines[idx].From = torsoPos
-            lines[idx].To = rlegPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        if torso and llegPos then
-            lines[idx].From = torsoPos
-            lines[idx].To = llegPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-
-        local rfootPos = rfoot and partPos(rfoot)
-        local lfootPos = lfoot and partPos(lfoot)
-        if rlegPos and rfootPos then
-            lines[idx].From = rlegPos
-            lines[idx].To = rfootPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        if llegPos and lfootPos then
-            lines[idx].From = llegPos
-            lines[idx].To = lfootPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-
-        while idx <= #lines do
-            lines[idx].Visible = false
-            idx = idx + 1
-        end
-    else
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
-    end
-end
+-- (Aimbot/Trigger logic can be added here if needed, but not required for ESP)
 
 -- ███████████████████████████████████████████████████████
--- ESP ДЛЯ ОБЪЕКТОВ (Containers, QuestItems, Vehicles)
+-- UNNAMED ESP INTEGRATION
 -- ███████████████████████████████████████████████████████
 
-local ItemESP = {}
-local QuestESP = {}
-local VehicleESP = {}
+local UnnamedESP_Loaded = false
 
-local function CreateObjectESP(list, obj, pos, name, flag)
-    local text = Drawing.new("Text")
-    text.Size = 14
-    text.Center = true
-    text.Outline = true
-    text.Font = 2
-    text.Visible = false
-    table.insert(list, { obj = obj, text = text, pos = pos, name = name, flag = flag })
-end
+function LoadUnnamedESPWithDeltaSupport()
+    if UnnamedESP_Loaded then return end
 
-local function UpdateObjectESP(list, flag)
-    local enabled = Settings.Visuals[flag].Enabled
-    local color = Color3.fromHSV(
-        Settings.Visuals[flag].Color[1] or 0,
-        Settings.Visuals[flag].Color[2] or 1,
-        Settings.Visuals[flag].Color[3] or 1
-    )
-    local maxDist = Settings.Visuals.General.MaxDistance
-    for _, entry in ipairs(list) do
-        local obj = entry.obj
-        if obj and obj.Parent then
-            local position = entry.pos.Value or entry.pos.Position
-            local screenPos, onScreen = Camera:WorldToViewportPoint(position)
-            if onScreen and enabled then
-                local dist = (position - Camera.CFrame.Position).Magnitude
-                if dist <= maxDist then
-                    entry.text.Visible = true
-                    entry.text.Text = entry.name .. string.format(" [%.0f]", dist)
-                    entry.text.Color = color
-                    entry.text.Position = Vector2.new(screenPos.X, screenPos.Y)
-                else
-                    entry.text.Visible = false
+    local success, result = pcall(function()
+        local code = game:HttpGet("https://raw.githubusercontent.com/ic3w0lf22/Unnamed-ESP/refs/heads/master/UnnamedESP.lua")
+
+        -- Disable menu creation and input
+        code = code:gsub("Menu:Create%(%)", "-- Menu:Create() -- disabled")
+        code = code:gsub("UserInputService.InputBegan:.-end", "-- input disabled")
+
+        -- Inject Project Delta module
+        local deltaModule = [[
+    [2862098693] = { -- Project Delta
+        CustomESP = function()
+            local containers = workspace:FindFirstChild("Containers")
+            if containers then
+                for _, obj in ipairs(containers:GetChildren()) do
+                    if obj:IsA("Model") then
+                        local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("Part")
+                        if part and shared.UESP_Config.ItemText then
+                            RenderList:AddOrUpdateInstance(obj, part, obj.Name .. " [" .. math.floor((part.Position - Camera.CFrame.Position).Magnitude) .. "]", shared.UESP_Config.ItemColor or Color3.new(0,1,0))
+                        end
+                    end
                 end
-            else
-                entry.text.Visible = false
             end
-        else
-            entry.text.Visible = false
-        end
-    end
-end
 
--- Инициализация существующих объектов (с учётом моделей)
-if Workspace:FindFirstChild("Containers") then
-    for _, container in ipairs(Workspace.Containers:GetChildren()) do
-        if container:IsA("Model") then
-            local part = container.PrimaryPart or container:FindFirstChildWhichIsA("Part")
-            if part then
-                CreateObjectESP(ItemESP, container, part, container.Name, "ItemText")
+            local questItems = workspace:FindFirstChild("QuestItems")
+            if questItems then
+                for _, obj in ipairs(questItems:GetChildren()) do
+                    if obj:IsA("Model") then
+                        local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("Part")
+                        if part and shared.UESP_Config.QuestItems then
+                            RenderList:AddOrUpdateInstance(obj, part, obj.Name .. " [" .. math.floor((part.Position - Camera.CFrame.Position).Magnitude) .. "]", shared.UESP_Config.QuestColor or Color3.new(0,1,1))
+                        end
+                    end
+                end
             end
-        end
-    end
-    Workspace.Containers.ChildAdded:Connect(function(item)
-        if item:IsA("Model") then
-            local part = item.PrimaryPart or item:FindFirstChildWhichIsA("Part")
-            if part then
-                CreateObjectESP(ItemESP, item, part, item.Name, "ItemText")
-            end
-        end
-    end)
-end
 
-if Workspace:FindFirstChild("QuestItems") then
-    for _, quest in ipairs(Workspace.QuestItems:GetChildren()) do
-        if quest:IsA("Model") then
-            local part = quest.PrimaryPart or quest:FindFirstChildWhichIsA("Part")
-            if part then
-                CreateObjectESP(QuestESP, quest, part, quest.Name, "QuestItems")
+            local vehicles = workspace:FindFirstChild("Vehicles")
+            if vehicles then
+                for _, obj in ipairs(vehicles:GetChildren()) do
+                    if obj:IsA("Model") then
+                        local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("Part")
+                        if part and shared.UESP_Config.Vehicles then
+                            RenderList:AddOrUpdateInstance(obj, part, obj.Name .. " [" .. math.floor((part.Position - Camera.CFrame.Position).Magnitude) .. "]", shared.UESP_Config.VehicleColor or Color3.new(1,0.5,0))
+                        end
+                    end
+                end
             end
-        end
-    end
-    Workspace.QuestItems.ChildAdded:Connect(function(quest)
-        if quest:IsA("Model") then
-            local part = quest.PrimaryPart or quest:FindFirstChildWhichIsA("Part")
-            if part then
-                CreateObjectESP(QuestESP, quest, part, quest.Name, "QuestItems")
-            end
-        end
-    end)
-end
+        end,
+    },
+]]
 
-if Workspace:FindFirstChild("Vehicles") then
-    for _, veh in ipairs(Workspace.Vehicles:GetChildren()) do
-        if veh:IsA("Model") then
-            local part = veh.PrimaryPart or veh:FindFirstChildWhichIsA("Part")
-            if part then
-                CreateObjectESP(VehicleESP, veh, part, veh.Name, "Vehicles")
-            end
-        end
-    end
-    Workspace.Vehicles.ChildAdded:Connect(function(veh)
-        if veh:IsA("Model") then
-            local part = veh.PrimaryPart or veh:FindFirstChildWhichIsA("Part")
-            if part then
-                CreateObjectESP(VehicleESP, veh, part, veh.Name, "Vehicles")
-            end
-        end
-    end)
-end
-
--- ███████████████████████████████████████████████████████
--- DEATH HISTORY
--- ███████████████████████████████████████████████████████
-local DeathESP = {}
-local DeathCounter = 0
-
-local function OnPlayerDied(player)
-    if not Settings.Visuals.DeathHistory.Enabled then return end
-    local char = player.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    DeathCounter = DeathCounter + 1
-    local text = Drawing.new("Text")
-    text.Size = 18
-    text.Center = true
-    text.Outline = true
-    text.Font = 2
-    text.Color = Color3.new(1,0,0)
-    text.Text = "☠️ " .. DeathCounter
-    table.insert(DeathESP, { pos = root.Position, text = text, count = DeathCounter, time = tick() })
-end
-
-local function hookPlayer(player)
-    if player == LocalPlayer then return end
-    local function onCharAdded(char)
-        local hum = char:WaitForChild("Humanoid")
-        hum.Died:Connect(function()
-            OnPlayerDied(player)
+        -- Insert module into the Modules table
+        code = code:gsub("local Modules = {.-}\n", function(fullMatch)
+            return fullMatch:sub(1, -3) .. deltaModule .. "}\n"
         end)
-    end
-    if player.Character then
-        onCharAdded(player.Character)
-    end
-    player.CharacterAdded:Connect(onCharAdded)
-end
 
-for _, player in ipairs(Players:GetPlayers()) do
-    hookPlayer(player)
-end
-Players.PlayerAdded:Connect(hookPlayer)
+        local fn = loadstring(code, "UnnamedESP")
+        if fn then
+            fn()
+            UnnamedESP_Loaded = true
+            print("UnnamedESP loaded with Project Delta support")
+        end
+    end)
 
-local function UpdateDeathESP()
-    if not Settings.Visuals.DeathHistory.Enabled then
-        for _, entry in ipairs(DeathESP) do
-            entry.text.Visible = false
-        end
-        return
-    end
-    local color = Color3.fromHSV(
-        Settings.Visuals.DeathHistory.Color[1] or 0,
-        Settings.Visuals.DeathHistory.Color[2] or 1,
-        Settings.Visuals.DeathHistory.Color[3] or 1
-    )
-    local maxDist = Settings.Visuals.General.MaxDistance
-    for i, entry in ipairs(DeathESP) do
-        if tick() - entry.time > 300 then
-            entry.text:Destroy()
-            table.remove(DeathESP, i)
-        else
-            local screenPos, onScreen = Camera:WorldToViewportPoint(entry.pos)
-            if onScreen then
-                local dist = (entry.pos - Camera.CFrame.Position).Magnitude
-                if dist <= maxDist then
-                    entry.text.Visible = true
-                    entry.text.Text = "☠️ " .. entry.count
-                    entry.text.Color = color
-                    entry.text.Position = Vector2.new(screenPos.X, screenPos.Y)
-                else
-                    entry.text.Visible = false
-                end
-            else
-                entry.text.Visible = false
-            end
-        end
+    if not success then
+        warn("Failed to load UnnamedESP:", result)
     end
 end
 
--- ███████████████████████████████████████████████████████
--- MAIN RENDER LOOP
--- ███████████████████████████████████████████████████████
-RunService.RenderStepped:Connect(function()
-    if not Settings.Visuals.General.Enabled then
-        -- скрыть всё
-        for _, esp in pairs(PlayerESP) do
-            for _, line in ipairs(esp.BoxLines) do line.Visible = false end
-            esp.Name.Visible = false
-            esp.Distance.Visible = false
-            esp.Tracer.Visible = false
-            for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-            for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
-        end
-        for _, list in ipairs({ItemESP, QuestESP, VehicleESP}) do
-            for _, entry in ipairs(list) do entry.text.Visible = false end
-        end
-        for _, entry in ipairs(DeathESP) do entry.text.Visible = false end
-        return
-    end
+-- Initialize UnnamedESP config table
+shared.UESP_Config = shared.UESP_Config or {
+    Enabled = false,
+    Boxes = true,
+    Names = true,
+    Health = true,
+    Weapons = true,
+    Distance = true,
+    Skeleton = false,
+    Tracers = false,
+    ItemText = false,
+    QuestItems = false,
+    Vehicles = false,
+    AllyColor = Color3.new(0,1,0),
+    EnemyColor = Color3.new(1,0,0),
+    ItemColor = Color3.new(0,1,0),
+    QuestColor = Color3.new(0,1,1),
+    VehicleColor = Color3.new(1,0.5,0),
+}
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer or Settings.Visuals.General.IncludeNPC then
-            if not PlayerESP[player] then
-                CreatePlayerESP(player)
-            end
-            UpdatePlayerESP(player)
-        end
-    end
-
-    UpdateObjectESP(ItemESP, "ItemText")
-    UpdateObjectESP(QuestESP, "QuestItems")
-    UpdateObjectESP(VehicleESP, "Vehicles")
-    UpdateDeathESP()
-end)
-
--- Zoom
+-- Zoom handling
 RunService.RenderStepped:Connect(function()
     if Settings.Visuals.Zoom.Enabled then
         Camera.FieldOfView = 70 - Settings.Visuals.Zoom.Level
@@ -1054,5 +626,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Cleanup on player removal
-Players.PlayerRemoving:Connect(RemovePlayerESP)
+-- Final message
+print("Data Hub - Project Delta (UnnamedESP Integrated) loaded")
+print("Use the Visuals tab to control UnnamedESP settings.")
