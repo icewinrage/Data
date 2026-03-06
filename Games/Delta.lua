@@ -209,11 +209,102 @@ local GunTab = Window:Tab({Name = "Gun Mods"}) do
     end
 end
 
--- ███████████████████████████████████████████████████████
--- UI: VISUALS (UnnamedESP integration)
--- ███████████████████████████████████████████████████████
 local VisualsTab = Window:Tab({Name = "Visuals"}) do
-    -- Zoom Section (kept separate)
+    local GeneralSection = VisualsTab:Section({Name = "General", Side = "Left"}) do
+        GeneralSection:Toggle({Name = "ESP Enabled", Flag = "Delta/Visuals/General/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.General.Enabled = val end})
+        GeneralSection:Toggle({Name = "Include NPC", Flag = "Delta/Visuals/General/IncludeNPC", Value = false,
+            Callback = function(val) Settings.Visuals.General.IncludeNPC = val end})
+        GeneralSection:Dropdown({Name = "Scale Type", Flag = "Delta/Visuals/General/ScaleType", List = {
+            {Name = "Static", Mode = "Button", Value = false},
+            {Name = "Dynamic", Mode = "Button", Value = true},
+            {Name = "Bounding", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.General.ScaleType = selected[1] end})
+        GeneralSection:Slider({Name = "Max Distance", Flag = "Delta/Visuals/General/MaxDistance", Min = 0, Max = 5000, Value = 1000,
+            Callback = function(val) Settings.Visuals.General.MaxDistance = val end})
+    end
+
+    local BoxSection = VisualsTab:Section({Name = "Box", Side = "Left"}) do
+        BoxSection:Toggle({Name = "Box", Flag = "Delta/Visuals/Box/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Box.Enabled = val end})
+        BoxSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Box/Color", Value = Settings.Visuals.Box.Color,
+            Callback = function(val) Settings.Visuals.Box.Color = val end})
+    end
+
+    local NameSection = VisualsTab:Section({Name = "Name", Side = "Left"}) do
+        NameSection:Toggle({Name = "Nametag", Flag = "Delta/Visuals/Name/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Name.Enabled = val end})
+        NameSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Name/Color", Value = Settings.Visuals.Name.Color,
+            Callback = function(val) Settings.Visuals.Name.Color = val end})
+    end
+
+    local TracersSection = VisualsTab:Section({Name = "Tracers", Side = "Left"}) do
+        TracersSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Tracers/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Tracers.Enabled = val end})
+        TracersSection:Dropdown({Name = "Mode", Flag = "Delta/Visuals/Tracers/Mode", List = {
+            {Name = "From Bottom", Mode = "Button", Value = true},
+            {Name = "From Mouse", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Tracers.Mode = selected[1] end})
+    end
+
+    local DistanceSection = VisualsTab:Section({Name = "Distance", Side = "Left"}) do
+        DistanceSection:Toggle({Name = "Distance", Flag = "Delta/Visuals/Distance/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Distance.Enabled = val end})
+        DistanceSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Distance/Color", Value = Settings.Visuals.Distance.Color,
+            Callback = function(val) Settings.Visuals.Distance.Color = val end})
+        DistanceSection:Dropdown({Name = "Mode", Flag = "Delta/Visuals/Distance/Mode", List = {
+            {Name = "Studs", Mode = "Button", Value = true},
+            {Name = "Meters", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Distance.Mode = selected[1] end})
+    end
+
+    local HealthSection = VisualsTab:Section({Name = "Health", Side = "Right"}) do
+        HealthSection:Toggle({Name = "Health Bar", Flag = "Delta/Visuals/Health/Bar", Value = false,
+            Callback = function(val) Settings.Visuals.Health.Bar = val end})
+        HealthSection:Dropdown({Name = "Color Mode", Flag = "Delta/Visuals/Health/ColorMode", List = {
+            {Name = "Red", Mode = "Button", Value = false},
+            {Name = "Green", Mode = "Button", Value = true},
+            {Name = "RGB", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Health.ColorMode = selected[1] end})
+    end
+
+    local SkeletonSection = VisualsTab:Section({Name = "Skeleton", Side = "Right"}) do
+        SkeletonSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Skeleton/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Skeleton.Enabled = val end})
+        SkeletonSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Skeleton/Color", Value = Settings.Visuals.Skeleton.Color,
+            Callback = function(val) Settings.Visuals.Skeleton.Color = val end})
+    end
+
+    local ItemTextSection = VisualsTab:Section({Name = "Item Text", Side = "Right"}) do
+        ItemTextSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/ItemText/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.ItemText.Enabled = val end})
+        ItemTextSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/ItemText/Color", Value = Settings.Visuals.ItemText.Color,
+            Callback = function(val) Settings.Visuals.ItemText.Color = val end})
+        ItemTextSection:Slider({Name = "Distance", Flag = "Delta/Visuals/ItemText/Distance", Min = 30, Max = 1000, Value = 100,
+            Callback = function(val) Settings.Visuals.ItemText.Distance = val end})
+    end
+
+    local QuestSection = VisualsTab:Section({Name = "Quest Items", Side = "Right"}) do
+        QuestSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/QuestItems/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.QuestItems.Enabled = val end})
+        QuestSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/QuestItems/Color", Value = Settings.Visuals.QuestItems.Color,
+            Callback = function(val) Settings.Visuals.QuestItems.Color = val end})
+    end
+
+    local VehicleSection = VisualsTab:Section({Name = "Vehicles", Side = "Right"}) do
+        VehicleSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Vehicles/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Vehicles.Enabled = val end})
+        VehicleSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Vehicles/Color", Value = Settings.Visuals.Vehicles.Color,
+            Callback = function(val) Settings.Visuals.Vehicles.Color = val end})
+    end
+
+    local DeathSection = VisualsTab:Section({Name = "Death History", Side = "Right"}) do
+        DeathSection:Toggle({Name = "Death History ESP", Flag = "Delta/Visuals/DeathHistory/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.DeathHistory.Enabled = val end})
+        DeathSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/DeathHistory/Color", Value = Settings.Visuals.DeathHistory.Color,
+            Callback = function(val) Settings.Visuals.DeathHistory.Color = val end})
+    end
+
     local ZoomSection = VisualsTab:Section({Name = "Zoom", Side = "Right"}) do
         ZoomSection:Toggle({
             Name = "Enable Zoom",
@@ -229,173 +320,6 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Max = 40,
             Value = 20,
             Callback = function(val) Settings.Visuals.Zoom.Level = val end
-        })
-    end
-
-    -- UnnamedESP control section
-    local UnnamedSection = VisualsTab:Section({Name = "Unnamed ESP", Side = "Left"}) do
-
-        UnnamedSection:Toggle({
-            Name = "Enable Unnamed ESP",
-            Flag = "Delta/UnnamedESP/Enabled",
-            Value = false,
-            Callback = function(val)
-                if not UnnamedESP_Loaded then
-                    LoadUnnamedESPWithDeltaSupport()
-                end
-                if shared.UESP_Config then
-                    shared.UESP_Config.Enabled = val
-                end
-            end
-        })
-
-        UnnamedSection:Toggle({
-            Name = "Player Boxes",
-            Flag = "Delta/UnnamedESP/Boxes",
-            Value = true,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.Boxes = val end
-            end
-        })
-
-        UnnamedSection:Toggle({
-            Name = "Player Names",
-            Flag = "Delta/UnnamedESP/Names",
-            Value = true,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.Names = val end
-            end
-        })
-
-        UnnamedSection:Toggle({
-            Name = "Player Health",
-            Flag = "Delta/UnnamedESP/Health",
-            Value = true,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.Health = val end
-            end
-        })
-
-        UnnamedSection:Toggle({
-            Name = "Player Weapons",
-            Flag = "Delta/UnnamedESP/Weapons",
-            Value = true,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.Weapons = val end
-            end
-        })
-
-        UnnamedSection:Toggle({
-            Name = "Player Distance",
-            Flag = "Delta/UnnamedESP/Distance",
-            Value = true,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.Distance = val end
-            end
-        })
-
-        UnnamedSection:Toggle({
-            Name = "Skeleton",
-            Flag = "Delta/UnnamedESP/Skeleton",
-            Value = false,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.Skeleton = val end
-            end
-        })
-
-        UnnamedSection:Toggle({
-            Name = "Tracers",
-            Flag = "Delta/UnnamedESP/Tracers",
-            Value = false,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.Tracers = val end
-            end
-        })
-
-        UnnamedSection:Divider({Text = "Object ESP"})
-
-        UnnamedSection:Toggle({
-            Name = "Item Text (Containers)",
-            Flag = "Delta/UnnamedESP/ItemText",
-            Value = false,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.ItemText = val end
-            end
-        })
-
-        UnnamedSection:Toggle({
-            Name = "Quest Items",
-            Flag = "Delta/UnnamedESP/QuestItems",
-            Value = false,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.QuestItems = val end
-            end
-        })
-
-        UnnamedSection:Toggle({
-            Name = "Vehicles",
-            Flag = "Delta/UnnamedESP/Vehicles",
-            Value = false,
-            Callback = function(val)
-                if shared.UESP_Config then shared.UESP_Config.Vehicles = val end
-            end
-        })
-
-        UnnamedSection:Divider({Text = "Colors"})
-
-        UnnamedSection:Colorpicker({
-            Name = "Ally Color",
-            Flag = "Delta/UnnamedESP/AllyColor",
-            Value = {0, 1, 0, 0, false},
-            Callback = function(hsv, color)
-                if shared.UESP_Config then shared.UESP_Config.AllyColor = color end
-            end
-        })
-
-        UnnamedSection:Colorpicker({
-            Name = "Enemy Color",
-            Flag = "Delta/UnnamedESP/EnemyColor",
-            Value = {1, 0, 0, 0, false},
-            Callback = function(hsv, color)
-                if shared.UESP_Config then shared.UESP_Config.EnemyColor = color end
-            end
-        })
-
-        UnnamedSection:Colorpicker({
-            Name = "Item Color",
-            Flag = "Delta/UnnamedESP/ItemColor",
-            Value = {0.5, 1, 0.5, 0, false},
-            Callback = function(hsv, color)
-                if shared.UESP_Config then shared.UESP_Config.ItemColor = color end
-            end
-        })
-
-        UnnamedSection:Colorpicker({
-            Name = "Quest Color",
-            Flag = "Delta/UnnamedESP/QuestColor",
-            Value = {0.2, 0.8, 1, 0, false},
-            Callback = function(hsv, color)
-                if shared.UESP_Config then shared.UESP_Config.QuestColor = color end
-            end
-        })
-
-        UnnamedSection:Colorpicker({
-            Name = "Vehicle Color",
-            Flag = "Delta/UnnamedESP/VehicleColor",
-            Value = {1, 0.5, 0, 0, false},
-            Callback = function(hsv, color)
-                if shared.UESP_Config then shared.UESP_Config.VehicleColor = color end
-            end
-        })
-
-        UnnamedSection:Button({
-            Name = "Reload Unnamed ESP",
-            Callback = function()
-                if UnnamedESP_Loaded then
-                    UnnamedESP_Loaded = false
-                end
-                LoadUnnamedESPWithDeltaSupport()
-            end
         })
     end
 end
