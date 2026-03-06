@@ -634,7 +634,7 @@ local function UpdatePlayerESP(player)
 
 -- Box
 -- Box (исправлено: добавлен минимальный размер, чтобы не становился крошечным на расстоянии)
-if Settings.Visuals.Box.Enabled then
+    if Settings.Visuals.Box.Enabled then
     -- Get the character's bounding box size
     local size = char:GetExtentsSize()
     
@@ -720,7 +720,7 @@ end
 
     -- Health Bar (простая вертикальная линия слева)
 -- HealthBar (исправлено: добавлены ограничения max/min высоты, чтобы не был огромным вблизи и видимым вдали)
-if Settings.Visuals.Health.Bar then
+    if Settings.Visuals.Health.Bar then
     -- Calculate the height of the health bar based on distance (scaled for perspective), with clamps
     local rawHeight = 150 * (1000 / math.max(dist, 1))
     local boxHeight = math.max(math.min(rawHeight, 100), 20)  -- max 100px, min 20px
@@ -760,7 +760,7 @@ else
 end
 
     -- Skeleton (как в предыдущей версии, но без лишнего)
-if Settings.Visuals.Skeleton.Enabled then
+    if Settings.Visuals.Skeleton.Enabled then
         local head = char:FindFirstChild("Head")
         local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
         local rarm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm")
