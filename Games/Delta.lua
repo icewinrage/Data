@@ -1,6 +1,6 @@
--- Data Hub - Project Delta (Optimized ESP without chams/outlines)
--- Game ID: 2862098693
--- Features: Custom ESP (players, items, quests, vehicles, death history), RageBot, Gun Mods, World, Misc
+-- Data Hub - Project Delta (Ultimate Edition)
+-- Game ID: 6483626525
+-- Features: RageBot, Gun Mods, Visuals (Full ESP), World, Misc, Anti-UAC
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
@@ -22,7 +22,11 @@ local DoubleTapActive = false
 local RapidFireActive = false
 local ZoomActive = false
 
--- Settings (will be updated via UI)
+-- Death history storage
+local DeathHistory = {} -- {position, time, count}
+local DeathCounter = 0
+
+-- Settings tables
 local Settings = {
     Rage = {
         SilentAim = false,
@@ -55,11 +59,12 @@ local Settings = {
             Enabled = false,
             IncludeNPC = false,
             ScaleType = "Dynamic",
-            MaxDistance = 1000
+            MaxDistance = 1000 -- общий слайдер дистанции
         },
         Box = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false}
+            Color = {1, 1, 1, 0, false},
+            Style = "Full"
         },
         Name = {
             Enabled = false,
@@ -67,6 +72,7 @@ local Settings = {
         },
         Tracers = {
             Enabled = false,
+            Outline = false,
             Mode = "From Bottom"
         },
         Distance = {
@@ -78,14 +84,23 @@ local Settings = {
             Bar = false,
             ColorMode = "Green"
         },
+        Chams = {
+            Enabled = false,
+            AllyColor = {0, 1, 0, 0, false},
+            EnemyColor = {1, 0, 0, 0, false},
+            Glow = false
+        },
         ItemText = {
             Enabled = false,
             Color = {1, 1, 1, 0, false},
             Distance = 100
         },
-        Skeleton = {
+        HeadDots = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false}
+            Filled = true,
+            Outline = true,
+            Autoscale = true,
+            Size = 4
         },
         DeathHistory = {
             Enabled = false,
@@ -136,7 +151,7 @@ local HitPartsList = {
 
 -- Проверка UI
 if not DataHub or not DataHub.Utilities or not DataHub.Utilities.UI then
-    warn("Data Hub UI library not loaded. Make sure Loader.lua is correct.")
+    warn("Data Hub UI library not loaded.")
     return
 end
 
@@ -150,14 +165,15 @@ pcall(function()
     })
 end)
 if not Window then
-    warn("Failed to create window. Check UI library.")
+    warn("Failed to create window.")
     return
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: RAGEBOT
+-- ВКЛАДКА RAGEBOT
 -- ███████████████████████████████████████████████████████
 local RageTab = Window:Tab({Name = "RageBot"}) do
+    -- Silent Aim Section
     local SilentSection = RageTab:Section({Name = "Silent Aim", Side = "Left"}) do
         SilentSection:Toggle({
             Name = "Enable Silent Aim",
@@ -192,21 +208,29 @@ local RageTab = Window:Tab({Name = "RageBot"}) do
             Callback = function(val) Settings.Rage.FOVColor = val end})
     end
 
+    -- AutoFire Section
     local AutoFireSection = RageTab:Section({Name = "Auto Fire", Side = "Right"}) do
         AutoFireSection:Toggle({Name = "Enable Auto Fire", Flag = "Delta/Rage/AutoFire", Value = false,
             Callback = function(val) Settings.Rage.AutoFire = val end})
     end
 
+    -- PlayerList Section (заглушка)
     local PlayerListSection = RageTab:Section({Name = "Player List", Side = "Right"}) do
         PlayerListSection:Label({Text = "Player list will be displayed here."})
         PlayerListSection:Button({Name = "Refresh List", Callback = function()
             print("Refreshing player list...")
+            -- TODO: actual player list logic
         end})
+    end
+
+    -- FOV Circle для Rage
+    if Settings.Rage.FOVCircle then
+        DataHub.Utilities.Drawing.SetupFOV("Rage", Window.Flags)
     end
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: GUN MODS
+-- ВКЛАДКА GUN MODS
 -- ███████████████████████████████████████████████████████
 local GunTab = Window:Tab({Name = "Gun Mods"}) do
     local GunSection = GunTab:Section({Name = "Weapon Modifications", Side = "Left"}) do
@@ -257,9 +281,10 @@ local GunTab = Window:Tab({Name = "Gun Mods"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: VISUALS (упрощённые настройки)
+-- ВКЛАДКА VISUALS (с Zoom)
 -- ███████████████████████████████████████████████████████
 local VisualsTab = Window:Tab({Name = "Visuals"}) do
+    -- General Section
     local GeneralSection = VisualsTab:Section({Name = "General", Side = "Left"}) do
         GeneralSection:Toggle({Name = "ESP Enabled", Flag = "Delta/Visuals/General/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.General.Enabled = val end})
@@ -274,13 +299,25 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.General.MaxDistance = val end})
     end
 
+    -- Box Section
     local BoxSection = VisualsTab:Section({Name = "Box", Side = "Left"}) do
         BoxSection:Toggle({Name = "Box", Flag = "Delta/Visuals/Box/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Box.Enabled = val end})
         BoxSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Box/Color", Value = Settings.Visuals.Box.Color,
             Callback = function(val) Settings.Visuals.Box.Color = val end})
+        BoxSection:Toggle({Name = "Basic White", Flag = "Delta/Visuals/Box/BasicWhite", Value = false,
+            Callback = function(val)
+                if val then
+                    Settings.Visuals.Box.Color = {1, 1, 1, 0, false}
+                end
+            end})
+        BoxSection:Dropdown({Name = "Style", Flag = "Delta/Visuals/Box/Style", List = {
+            {Name = "Full", Mode = "Button", Value = true},
+            {Name = "Corner", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Box.Style = selected[1] end})
     end
 
+    -- Name Section
     local NameSection = VisualsTab:Section({Name = "Name", Side = "Left"}) do
         NameSection:Toggle({Name = "Nametag", Flag = "Delta/Visuals/Name/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Name.Enabled = val end})
@@ -288,15 +325,19 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.Name.Color = val end})
     end
 
+    -- Tracers Section
     local TracersSection = VisualsTab:Section({Name = "Tracers", Side = "Left"}) do
         TracersSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Tracers/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Tracers.Enabled = val end})
+        TracersSection:Toggle({Name = "Outline", Flag = "Delta/Visuals/Tracers/Outline", Value = false,
+            Callback = function(val) Settings.Visuals.Tracers.Outline = val end})
         TracersSection:Dropdown({Name = "Mode", Flag = "Delta/Visuals/Tracers/Mode", List = {
             {Name = "From Bottom", Mode = "Button", Value = true},
             {Name = "From Mouse", Mode = "Button"}
         }, Callback = function(selected) Settings.Visuals.Tracers.Mode = selected[1] end})
     end
 
+    -- Distance Section
     local DistanceSection = VisualsTab:Section({Name = "Distance", Side = "Left"}) do
         DistanceSection:Toggle({Name = "Distance", Flag = "Delta/Visuals/Distance/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Distance.Enabled = val end})
@@ -308,6 +349,7 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
         }, Callback = function(selected) Settings.Visuals.Distance.Mode = selected[1] end})
     end
 
+    -- Health Section
     local HealthSection = VisualsTab:Section({Name = "Health", Side = "Right"}) do
         HealthSection:Toggle({Name = "Health Bar", Flag = "Delta/Visuals/Health/Bar", Value = false,
             Callback = function(val) Settings.Visuals.Health.Bar = val end})
@@ -318,13 +360,19 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
         }, Callback = function(selected) Settings.Visuals.Health.ColorMode = selected[1] end})
     end
 
-    local SkeletonSection = VisualsTab:Section({Name = "Skeleton", Side = "Right"}) do
-        SkeletonSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Skeleton/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.Skeleton.Enabled = val end})
-        SkeletonSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Skeleton/Color", Value = Settings.Visuals.Skeleton.Color,
-            Callback = function(val) Settings.Visuals.Skeleton.Color = val end})
+    -- Chams Section
+    local ChamsSection = VisualsTab:Section({Name = "Chams", Side = "Right"}) do
+        ChamsSection:Toggle({Name = "Chams", Flag = "Delta/Visuals/Chams/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Chams.Enabled = val end})
+        ChamsSection:Colorpicker({Name = "Ally Color", Flag = "Delta/Visuals/Chams/AllyColor", Value = Settings.Visuals.Chams.AllyColor,
+            Callback = function(val) Settings.Visuals.Chams.AllyColor = val end})
+        ChamsSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/Visuals/Chams/EnemyColor", Value = Settings.Visuals.Chams.EnemyColor,
+            Callback = function(val) Settings.Visuals.Chams.EnemyColor = val end})
+        ChamsSection:Toggle({Name = "Glow", Flag = "Delta/Visuals/Chams/Glow", Value = false,
+            Callback = function(val) Settings.Visuals.Chams.Glow = val end})
     end
 
+    -- Item Text Section (лут)
     local ItemTextSection = VisualsTab:Section({Name = "Item Text", Side = "Right"}) do
         ItemTextSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/ItemText/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.ItemText.Enabled = val end})
@@ -334,6 +382,21 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.ItemText.Distance = val end})
     end
 
+    -- Head Dots Section
+    local HeadDotsSection = VisualsTab:Section({Name = "Head Dots", Side = "Right"}) do
+        HeadDotsSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/HeadDots/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.HeadDots.Enabled = val end})
+        HeadDotsSection:Toggle({Name = "Filled", Flag = "Delta/Visuals/HeadDots/Filled", Value = true,
+            Callback = function(val) Settings.Visuals.HeadDots.Filled = val end})
+        HeadDotsSection:Toggle({Name = "Outline", Flag = "Delta/Visuals/HeadDots/Outline", Value = true,
+            Callback = function(val) Settings.Visuals.HeadDots.Outline = val end})
+        HeadDotsSection:Toggle({Name = "Autoscale", Flag = "Delta/Visuals/HeadDots/Autoscale", Value = true,
+            Callback = function(val) Settings.Visuals.HeadDots.Autoscale = val end})
+        HeadDotsSection:Slider({Name = "Size", Flag = "Delta/Visuals/HeadDots/Size", Min = 1, Max = 20, Value = 4,
+            Callback = function(val) Settings.Visuals.HeadDots.Size = val end})
+    end
+
+    -- Quest Items Section
     local QuestSection = VisualsTab:Section({Name = "Quest Items", Side = "Right"}) do
         QuestSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/QuestItems/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.QuestItems.Enabled = val end})
@@ -341,6 +404,7 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.QuestItems.Color = val end})
     end
 
+    -- Vehicles Section
     local VehicleSection = VisualsTab:Section({Name = "Vehicles", Side = "Right"}) do
         VehicleSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Vehicles/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Vehicles.Enabled = val end})
@@ -348,6 +412,7 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.Vehicles.Color = val end})
     end
 
+    -- Death History Section
     local DeathSection = VisualsTab:Section({Name = "Death History", Side = "Right"}) do
         DeathSection:Toggle({Name = "Death History ESP", Flag = "Delta/Visuals/DeathHistory/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.DeathHistory.Enabled = val end})
@@ -355,6 +420,7 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.DeathHistory.Color = val end})
     end
 
+    -- Zoom Section
     local ZoomSection = VisualsTab:Section({Name = "Zoom", Side = "Right"}) do
         ZoomSection:Toggle({
             Name = "Enable Zoom",
@@ -375,9 +441,10 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: WORLD
+-- ВКЛАДКА WORLD
 -- ███████████████████████████████████████████████████████
 local WorldTab = Window:Tab({Name = "World"}) do
+    -- Environment Section
     local EnvSection = WorldTab:Section({Name = "Environment", Side = "Left"}) do
         EnvSection:Toggle({Name = "Full Bright", Flag = "Delta/World/FullBright", Value = false,
             Callback = function(val) Settings.World.FullBright = val end})
@@ -390,11 +457,13 @@ local WorldTab = Window:Tab({Name = "World"}) do
             Callback = function(val) Settings.World.AmbientColor = val end})
     end
 
+    -- SkyBox Section
     local SkySection = WorldTab:Section({Name = "Sky Box", Side = "Left"}) do
         SkySection:Toggle({Name = "Moon", Flag = "Delta/World/SkyBox/Moon", Value = false,
             Callback = function(val) Settings.World.SkyBox.Moon = val end})
     end
 
+    -- Inventory Checker Section
     local InvSection = WorldTab:Section({Name = "Inventory Checker", Side = "Right"}) do
         InvSection:Toggle({
             Name = "Enable Inventory",
@@ -418,7 +487,7 @@ local WorldTab = Window:Tab({Name = "World"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: MISC
+-- ВКЛАДКА MISC
 -- ███████████████████████████████████████████████████████
 local MiscTab = Window:Tab({Name = "Misc"}) do
     local MiscSection = MiscTab:Section({Name = "Utilities", Side = "Left"}) do
@@ -452,237 +521,181 @@ local MiscTab = Window:Tab({Name = "Misc"}) do
     end
 end
 
--- Settings section
+-- ███████████████████████████████████████████████████████
+-- НАСТРОЙКИ (из утилит)
+-- ███████████████████████████████████████████████████████
 DataHub.Utilities:SettingsSection(Window, "RightShift", false)
 DataHub.Utilities.InitAutoLoad(Window)
 
 -- ███████████████████████████████████████████████████████
--- PROJECT DELTA SPECIFIC FUNCTIONS
+-- РЕАЛИЗАЦИЯ VISUALS (ESP)
 -- ███████████████████████████████████████████████████████
 
-local function GetPlayerGameplayVars(player)
-    local folder = ReplicatedStorage:FindFirstChild("Players")
-    if not folder then return nil end
-    local playerData = folder:FindFirstChild(player.Name)
-    if not playerData then return nil end
-    local status = playerData:FindFirstChild("Status")
-    if not status then return nil end
-    return status:FindFirstChild("GameplayVariables")
+-- Вспомогательная функция для получения цвета из таблицы HSV
+local function GetColorFromHSV(hsvTable)
+    if not hsvTable then return Color3.new(1,1,1) end
+    return Color3.fromHSV(hsvTable[1] or 0, hsvTable[2] or 1, hsvTable[3] or 1)
 end
 
-local function GetRealHealth(player)
-    local vars = GetPlayerGameplayVars(player)
-    if vars then
-        local health = vars:FindFirstChild("Health")
-        if health then
-            return health.Value
-        end
-    end
-    local char = player.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            return hum.Health
-        end
-    end
-    return 100
-end
-
-local function GetCurrentWeapon(player)
-    local vars = GetPlayerGameplayVars(player)
-    if vars then
-        local tool = vars:FindFirstChild("CurrentTool")
-        if tool then
-            return tool.Value
-        end
-    end
-    local char = player.Character
-    if char then
-        local tool = char:FindFirstChildOfClass("Tool")
-        if tool then
-            return tool.Name
-        end
-    end
-    return "None"
-end
-
+-- Функция определения врага/союзника (без команд, все кроме себя - враги)
 local function IsEnemy(player)
     return player ~= LocalPlayer
 end
 
--- ███████████████████████████████████████████████████████
--- EFFICIENT ESP SYSTEM
--- ███████████████████████████████████████████████████████
+-- Хранилище для Drawing объектов каждого игрока
+local ESPObjects = {}
 
-local function newLine()
-    return Drawing.new("Line")
-end
+-- Хранилище для объектов лута, квестов, машин
+local ItemESPObjects = {}
+local QuestESPObjects = {}
+local VehicleESPObjects = {}
 
-local function newText()
-    return Drawing.new("Text")
-end
-
-local PlayerESP = {}
-
-local function CreatePlayerESP(player)
-    if PlayerESP[player] then return end
-    local esp = {
-        BoxLines = { newLine(), newLine(), newLine(), newLine() },
-        Name = newText(),
-        Distance = newText(),
-        Tracer = newLine(),
-        HealthBar = { newLine(), newLine() }, -- фон и заполнение
-        SkeletonLines = {}
+-- Создание объектов для игрока
+local function CreateESPForPlayer(player)
+    if ESPObjects[player] then return end
+    ESPObjects[player] = {
+        Box = {
+            Lines = {}, -- для бокса (будем создавать 4 или 8 линий)
+            HealthBar = nil,
+        },
+        Name = DataHub.Utilities.Drawing.AddDrawing("Text", { Size = 14, Center = true, Outline = true, Font = 2 }),
+        Distance = DataHub.Utilities.Drawing.AddDrawing("Text", { Size = 12, Center = true, Outline = true, Font = 2 }),
+        Tracer = {
+            Main = DataHub.Utilities.Drawing.AddDrawing("Line", {}),
+            Outline = DataHub.Utilities.Drawing.AddDrawing("Line", {}),
+        },
+        HeadDot = {
+            Main = DataHub.Utilities.Drawing.AddDrawing("Circle", {}),
+            Outline = DataHub.Utilities.Drawing.AddDrawing("Circle", {}),
+        },
+        Highlight = nil -- будет создан позже
     }
-
-    esp.Name.Size = 14
-    esp.Name.Center = true
-    esp.Name.Outline = true
-    esp.Name.Font = 2
-    esp.Distance.Size = 12
-    esp.Distance.Center = true
-    esp.Distance.Outline = true
-    esp.Distance.Font = 2
-
-    esp.Tracer.Thickness = 2
-
-    esp.HealthBar[1].Thickness = 3
-    esp.HealthBar[1].Color = Color3.new(0,0,0)
-    esp.HealthBar[2].Thickness = 3
-
-    for i = 1, 12 do
-        local line = newLine()
-        line.Thickness = 2
-        esp.SkeletonLines[i] = line
+    -- Создаём линии для бокса (4 линии для простого прямоугольника)
+    for i = 1, 4 do
+        ESPObjects[player].Box.Lines[i] = DataHub.Utilities.Drawing.AddDrawing("Line", {})
     end
-
-    PlayerESP[player] = esp
 end
 
-local function RemovePlayerESP(player)
-    local esp = PlayerESP[player]
-    if not esp then return end
-    for _, line in ipairs(esp.BoxLines) do line:Destroy() end
-    esp.Name:Destroy()
-    esp.Distance:Destroy()
-    esp.Tracer:Destroy()
-    for _, line in ipairs(esp.HealthBar) do line:Destroy() end
-    for _, line in ipairs(esp.SkeletonLines) do line:Destroy() end
-    PlayerESP[player] = nil
-end
-
-local function UpdatePlayerESP(player)
-    local esp = PlayerESP[player]
+-- Обновление ESP для игрока
+local function UpdateESPForPlayer(player)
+    local esp = ESPObjects[player]
     if not esp then return end
 
-    local char = player.Character
-    if not char then
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
+    local character = player.Character
+    if not character then
+        -- скрыть все объекты
         esp.Name.Visible = false
         esp.Distance.Visible = false
-        esp.Tracer.Visible = false
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
+        esp.Tracer.Main.Visible = false
+        esp.Tracer.Outline.Visible = false
+        esp.HeadDot.Main.Visible = false
+        esp.HeadDot.Outline.Visible = false
+        for _, line in ipairs(esp.Box.Lines) do
+            line.Visible = false
+        end
+        if esp.Highlight then
+            esp.Highlight.Enabled = false
+        end
         return
     end
 
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then
+        -- скрыть
         esp.Name.Visible = false
         esp.Distance.Visible = false
-        esp.Tracer.Visible = false
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
+        esp.Tracer.Main.Visible = false
+        esp.Tracer.Outline.Visible = false
+        esp.HeadDot.Main.Visible = false
+        esp.HeadDot.Outline.Visible = false
+        for _, line in ipairs(esp.Box.Lines) do
+            line.Visible = false
+        end
         return
     end
 
-    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+
+    local screenPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
     if not onScreen then
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
+        -- можно скрыть или оставить стрелки (но пока скроем)
         esp.Name.Visible = false
         esp.Distance.Visible = false
-        esp.Tracer.Visible = false
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
+        esp.Tracer.Main.Visible = false
+        esp.Tracer.Outline.Visible = false
+        esp.HeadDot.Main.Visible = false
+        esp.HeadDot.Outline.Visible = false
+        for _, line in ipairs(esp.Box.Lines) do
+            line.Visible = false
+        end
         return
     end
 
-    local dist = (root.Position - Camera.CFrame.Position).Magnitude
-    if dist > Settings.Visuals.General.MaxDistance then
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
+    local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
+    if distance > Settings.Visuals.General.MaxDistance then
+        -- скрываем за дистанцией
         esp.Name.Visible = false
         esp.Distance.Visible = false
-        esp.Tracer.Visible = false
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
+        esp.Tracer.Main.Visible = false
+        esp.Tracer.Outline.Visible = false
+        esp.HeadDot.Main.Visible = false
+        esp.HeadDot.Outline.Visible = false
+        for _, line in ipairs(esp.Box.Lines) do
+            line.Visible = false
+        end
         return
     end
 
     local isEnemy = IsEnemy(player)
-    local health = GetRealHealth(player)
-    local healthPercent = health / 100
 
-    local function HSVToColor(hsv)
-        return Color3.fromHSV(hsv[1] or 0, hsv[2] or 1, hsv[3] or 1)
+    -- Получаем настройки
+    local vis = Settings.Visuals
+
+    -- Определяем цвет в зависимости от врага/союзника (для бокса и трейсера используем цвет врага/союзника из настроек)
+    local boxColor = GetColorFromHSV(vis.Box.Color)
+    local nameColor = GetColorFromHSV(vis.Name.Color)
+    local distanceColor = GetColorFromHSV(vis.Distance.Color)
+    local healthColor = isEnemy and Color3.new(1,0,0) or Color3.new(0,1,0) -- для хп-бара
+
+    -- Box (простой 2D прямоугольник вокруг персонажа)
+    if vis.Box.Enabled then
+        -- Приблизительный размер бокса (можно улучшить через GetExtentsSize)
+        local size = Vector2.new(100, 150) * (1000 / math.max(distance, 1)) -- масштабирование
+        local pos = Vector2.new(screenPos.X, screenPos.Y) - size/2
+        local lines = esp.Box.Lines
+        -- Верхняя горизонтальная
+        lines[1].From = pos
+        lines[1].To = pos + Vector2.new(size.X, 0)
+        lines[1].Color = boxColor
+        lines[1].Thickness = 2
+        lines[1].Visible = true
+        -- Правая вертикальная
+        lines[2].From = pos + Vector2.new(size.X, 0)
+        lines[2].To = pos + size
+        lines[2].Color = boxColor
+        lines[2].Thickness = 2
+        lines[2].Visible = true
+        -- Нижняя горизонтальная
+        lines[3].From = pos + size
+        lines[3].To = pos + Vector2.new(0, size.Y)
+        lines[3].Color = boxColor
+        lines[3].Thickness = 2
+        lines[3].Visible = true
+        -- Левая вертикальная
+        lines[4].From = pos + Vector2.new(0, size.Y)
+        lines[4].To = pos
+        lines[4].Color = boxColor
+        lines[4].Thickness = 2
+        lines[4].Visible = true
+    else
+        for _, line in ipairs(esp.Box.Lines) do
+            line.Visible = false
+        end
     end
-
-    local boxColor = HSVToColor(Settings.Visuals.Box.Color)
-    local nameColor = HSVToColor(Settings.Visuals.Name.Color)
-    local distanceColor = HSVToColor(Settings.Visuals.Distance.Color)
-    local skeletonColor = HSVToColor(Settings.Visuals.Skeleton.Color)
-
--- Box
--- Box (исправлено: добавлен минимальный размер, чтобы не становился крошечным на расстоянии)
-    if Settings.Visuals.Box.Enabled then
-    -- Get the character's bounding box size
-    local size = char:GetExtentsSize()
-    
-    -- Calculate the projected size on screen, accounting for distance and camera field of view
-    local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView) / 2))
-    
-    -- Extract width and height from the projected size with minimum clamps for visibility at distance
-    local boxWidth = math.max(projSize.X, 30)  -- min 30px width
-    local boxHeight = math.max(projSize.Y, 60) -- min 60px height
-    
-    -- Calculate the top-left position of the box, centered on the screen position
-    local pos = Vector2.new(screenPos.X - boxWidth / 2, screenPos.Y - boxHeight / 2)
-    
-    -- Reference to the box lines table
-    local lines = esp.BoxLines
-    
-    -- Top line
-    lines[1].From = pos
-    lines[1].To = pos + Vector2.new(boxWidth, 0)
-    lines[1].Color = boxColor
-    lines[1].Visible = true
-    
-    -- Right line
-    lines[2].From = pos + Vector2.new(boxWidth, 0)
-    lines[2].To = pos + Vector2.new(boxWidth, boxHeight)
-    lines[2].Color = boxColor
-    lines[2].Visible = true
-    
-    -- Bottom line
-    lines[3].From = pos + Vector2.new(boxWidth, boxHeight)
-    lines[3].To = pos + Vector2.new(0, boxHeight)
-    lines[3].Color = boxColor
-    lines[3].Visible = true
-    
-    -- Left line
-    lines[4].From = pos + Vector2.new(0, boxHeight)
-    lines[4].To = pos
-    lines[4].Color = boxColor
-    lines[4].Visible = true
-else
-    -- Hide all box lines if the box is disabled
-    for _, line in ipairs(esp.BoxLines) do
-        line.Visible = false
-    end
-end
 
     -- Name
-    if Settings.Visuals.Name.Enabled then
+    if vis.Name.Enabled then
         esp.Name.Visible = true
         esp.Name.Text = player.Name
         esp.Name.Color = nameColor
@@ -692,10 +705,10 @@ end
     end
 
     -- Distance
-    if Settings.Visuals.Distance.Enabled then
+    if vis.Distance.Enabled then
         esp.Distance.Visible = true
-        local unit = Settings.Visuals.Distance.Mode == "Meters" and "m" or "studs"
-        esp.Distance.Text = string.format("%.0f %s", dist, unit)
+        local unit = vis.Distance.Mode == "Meters" and "m" or "studs"
+        esp.Distance.Text = string.format("%.0f %s", distance, unit)
         esp.Distance.Color = distanceColor
         esp.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + 30)
     else
@@ -703,200 +716,107 @@ end
     end
 
     -- Tracers
-    if Settings.Visuals.Tracers.Enabled then
+    if vis.Tracers.Enabled then
         local fromPos
-        if Settings.Visuals.Tracers.Mode == "From Mouse" then
+        if vis.Tracers.Mode == "From Mouse" then
             fromPos = UserInputService:GetMouseLocation()
         else
-            fromPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+            fromPos = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
         end
-        esp.Tracer.From = fromPos
-        esp.Tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-        esp.Tracer.Color = boxColor
-        esp.Tracer.Visible = true
+        local toPos = Vector2.new(screenPos.X, screenPos.Y)
+        esp.Tracer.Main.From = fromPos
+        esp.Tracer.Main.To = toPos
+        esp.Tracer.Main.Color = boxColor
+        esp.Tracer.Main.Visible = true
+        if vis.Tracers.Outline then
+            esp.Tracer.Outline.From = fromPos
+            esp.Tracer.Outline.To = toPos
+            esp.Tracer.Outline.Color = Color3.new(0,0,0)
+            esp.Tracer.Outline.Thickness = esp.Tracer.Main.Thickness + 2
+            esp.Tracer.Outline.Visible = true
+        else
+            esp.Tracer.Outline.Visible = false
+        end
     else
-        esp.Tracer.Visible = false
+        esp.Tracer.Main.Visible = false
+        esp.Tracer.Outline.Visible = false
     end
 
-    -- Health Bar (простая вертикальная линия слева)
--- HealthBar (исправлено: добавлены ограничения max/min высоты, чтобы не был огромным вблизи и видимым вдали)
-    if Settings.Visuals.Health.Bar then
-    -- Calculate the height of the health bar based on distance (scaled for perspective), with clamps
-    local rawHeight = 150 * (1000 / math.max(dist, 1))
-    local boxHeight = math.max(math.min(rawHeight, 100), 20)  -- max 100px, min 20px
-    
-    -- Position the bar to the left of the screen position, centered vertically
-    local barX = screenPos.X - 55
-    local barY = screenPos.Y - boxHeight / 2
-    
-    -- Set up the background line (full bar outline)
-    esp.HealthBar[1].From = Vector2.new(barX, barY)
-    esp.HealthBar[1].To = Vector2.new(barX, barY + boxHeight)
-    esp.HealthBar[1].Visible = true
-    
-    -- Calculate the filled portion height based on health percentage
-    local fillHeight = boxHeight * healthPercent
-    
-    -- Set up the filled health line (from bottom up, assuming Y increases downward)
-    esp.HealthBar[2].From = Vector2.new(barX, barY + boxHeight)
-    esp.HealthBar[2].To = Vector2.new(barX, barY + boxHeight - fillHeight)
-    
-    -- Determine the color based on the selected mode
-    if Settings.Visuals.Health.ColorMode == "Green" then
-        esp.HealthBar[2].Color = Color3.new(0, 1, 0)
-    elseif Settings.Visuals.Health.ColorMode == "Red" then
-        esp.HealthBar[2].Color = Color3.new(1, 0, 0)
+    -- Head Dots
+    if vis.HeadDots.Enabled then
+        local head = character:FindFirstChild("Head")
+        if head then
+            local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
+            if headOnScreen then
+                local radius = vis.HeadDots.Size
+                if vis.HeadDots.Autoscale then
+                    radius = radius * (1000 / math.max(distance, 1))
+                end
+                esp.HeadDot.Main.Radius = radius
+                esp.HeadDot.Main.Position = Vector2.new(headPos.X, headPos.Y)
+                esp.HeadDot.Main.Color = boxColor
+                esp.HeadDot.Main.Filled = vis.HeadDots.Filled
+                esp.HeadDot.Main.Visible = true
+                if vis.HeadDots.Outline then
+                    esp.HeadDot.Outline.Radius = radius + 1
+                    esp.HeadDot.Outline.Position = esp.HeadDot.Main.Position
+                    esp.HeadDot.Outline.Color = Color3.new(0,0,0)
+                    esp.HeadDot.Outline.Thickness = 2
+                    esp.HeadDot.Outline.Filled = false
+                    esp.HeadDot.Outline.Visible = true
+                else
+                    esp.HeadDot.Outline.Visible = false
+                end
+            end
+        end
     else
-        -- Default: Gradient from red to green based on health percent
-        esp.HealthBar[2].Color = Color3.new(1 - healthPercent, healthPercent, 0)
+        esp.HeadDot.Main.Visible = false
+        esp.HeadDot.Outline.Visible = false
     end
-    
-    esp.HealthBar[2].Visible = true
-else
-    -- Hide both lines if the bar is disabled
-    for _, line in ipairs(esp.HealthBar) do
-        line.Visible = false
+
+    -- Chams через Highlight
+    if vis.Chams.Enabled then
+        if not esp.Highlight then
+            esp.Highlight = Instance.new("Highlight")
+            esp.Highlight.Adornee = character
+            esp.Highlight.Parent = character
+        end
+        local chamColor = isEnemy and GetColorFromHSV(vis.Chams.EnemyColor) or GetColorFromHSV(vis.Chams.AllyColor)
+        esp.Highlight.FillColor = chamColor
+        esp.Highlight.OutlineColor = vis.Chams.Glow and Color3.new(1,1,1) or Color3.new(0,0,0)
+        esp.Highlight.FillTransparency = 0.5
+        esp.Highlight.OutlineTransparency = vis.Chams.Glow and 0 or 1
+        esp.Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    else
+        if esp.Highlight then
+            esp.Highlight:Destroy()
+            esp.Highlight = nil
+        end
     end
 end
 
-    -- Skeleton (как в предыдущей версии, но без лишнего)
-    if Settings.Visuals.Skeleton.Enabled then
-        local head = char:FindFirstChild("Head")
-        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-        local rarm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm")
-        local larm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftUpperArm")
-        local rleg = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightUpperLeg")
-        local lleg = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftUpperLeg")
-        local rhand = char:FindFirstChild("RightHand")
-        local lhand = char:FindFirstChild("LeftHand")
-        local rfoot = char:FindFirstChild("RightFoot")
-        local lfoot = char:FindFirstChild("LeftFoot")
-        local function partPos(part)
-            if not part then return nil end
-            local pos, on = Camera:WorldToViewportPoint(part.Position)
-            if on then return Vector2.new(pos.X, pos.Y) end
-            return nil
-        end
-        local lines = esp.SkeletonLines
-        local idx = 1
-        local neckPos = head and partPos(head)
-        local torsoPos = torso and partPos(torso)
-        if head and torso and neckPos and torsoPos then
-            lines[idx].From = neckPos
-            lines[idx].To = torsoPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        local rarmPos = rarm and partPos(rarm)
-        local larmPos = larm and partPos(larm)
-        if torso and rarmPos then
-            lines[idx].From = torsoPos
-            lines[idx].To = rarmPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        if torso and larmPos then
-            lines[idx].From = torsoPos
-            lines[idx].To = larmPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        local rhandPos = rhand and partPos(rhand)
-        local lhandPos = lhand and partPos(lhand)
-        if rarmPos and rhandPos then
-            lines[idx].From = rarmPos
-            lines[idx].To = rhandPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        if larmPos and lhandPos then
-            lines[idx].From = larmPos
-            lines[idx].To = lhandPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        local rlegPos = rleg and partPos(rleg)
-        local llegPos = lleg and partPos(lleg)
-        if torso and rlegPos then
-            lines[idx].From = torsoPos
-            lines[idx].To = rlegPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        if torso and llegPos then
-            lines[idx].From = torsoPos
-            lines[idx].To = llegPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        local rfootPos = rfoot and partPos(rfoot)
-        local lfootPos = lfoot and partPos(lfoot)
-        if rlegPos and rfootPos then
-            lines[idx].From = rlegPos
-            lines[idx].To = rfootPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        if llegPos and lfootPos then
-            lines[idx].From = llegPos
-            lines[idx].To = lfootPos
-            lines[idx].Color = skeletonColor
-            lines[idx].Visible = true
-            idx = idx + 1
-        end
-        while idx <= #lines do
-            lines[idx].Visible = false
-            idx = idx + 1
-        end
-    else
-        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
-    end
+-- Функция для создания ESP для объектов (лут, квесты, машины)
+local function CreateObjectESP(category, obj, name, position, colorFlag)
+    if not obj or not position then return end
+    local text = DataHub.Utilities.Drawing.AddDrawing("Text", { Size = 12, Center = true, Outline = true, Font = 2 })
+    table.insert(category, { obj = obj, text = text, position = position, colorFlag = colorFlag })
 end
 
--- ███████████████████████████████████████████████████████
--- ESP ДЛЯ ОБЪЕКТОВ (items, quests, vehicles)
--- ███████████████████████████████████████████████████████
-
-local ItemESP = {}
-local QuestESP = {}
-local VehicleESP = {}
-
-local function CreateObjectESP(list, obj, pos, name, flag)
-    local text = Drawing.new("Text")
-    text.Size = 12
-    text.Center = true
-    text.Outline = true
-    text.Font = 2
-    text.Visible = false
-    table.insert(list, { obj = obj, text = text, pos = pos, name = name, flag = flag })
-end
-
-local function UpdateObjectESP(list, flag)
-    local enabled = Settings.Visuals[flag].Enabled
-    local color = Color3.fromHSV(
-        Settings.Visuals[flag].Color[1] or 0,
-        Settings.Visuals[flag].Color[2] or 1,
-        Settings.Visuals[flag].Color[3] or 1
-    )
+-- Обновление ESP для объектов
+local function UpdateObjectESP(list, settingsFlag)
+    local enabled = Settings.Visuals[settingsFlag].Enabled
+    local color = GetColorFromHSV(Settings.Visuals[settingsFlag].Color)
     local maxDist = Settings.Visuals.General.MaxDistance
     for _, entry in ipairs(list) do
         local obj = entry.obj
         if obj and obj.Parent then
-            local position = entry.pos.Value or entry.pos.Position
-            local screenPos, onScreen = Camera:WorldToViewportPoint(position)
+            local pos = entry.position.Value or entry.position.Position
+            local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
             if onScreen and enabled then
-                local dist = (position - Camera.CFrame.Position).Magnitude
+                local dist = (pos - Camera.CFrame.Position).Magnitude
                 if dist <= maxDist then
                     entry.text.Visible = true
-                    entry.text.Text = entry.name .. string.format(" [%.0f]", dist)
+                    entry.text.Text = entry.obj.Name .. string.format(" [%.0f]", dist)
                     entry.text.Color = color
                     entry.text.Position = Vector2.new(screenPos.X, screenPos.Y)
                 else
@@ -911,72 +831,91 @@ local function UpdateObjectESP(list, flag)
     end
 end
 
--- Инициализация объектов
-if Workspace:FindFirstChild("Containers") then
-    for _, container in ipairs(Workspace.Containers:GetChildren()) do
-        CreateObjectESP(ItemESP, container, container:FindFirstChild("Part") or container, container.Name, "ItemText")
-    end
-    Workspace.Containers.ChildAdded:Connect(function(item)
-        CreateObjectESP(ItemESP, item, item:FindFirstChild("Part") or item, item.Name, "ItemText")
-    end)
+-- Создание ESP для существующих объектов при старте
+for _, container in ipairs(Workspace:FindFirstChild("Containers"):GetChildren()) do
+    CreateObjectESP(ItemESPObjects, container, container.Name, container:FindFirstChild("Part") or container, "ItemText")
 end
 
+Workspace.ChildAdded:Connect(function(child)
+    if child.Name == "Containers" then
+        child.ChildAdded:Connect(function(item)
+            CreateObjectESP(ItemESPObjects, item, item.Name, item:FindFirstChild("Part") or item, "ItemText")
+        end)
+    end
+end)
+
+-- Quest Items
 if Workspace:FindFirstChild("QuestItems") then
     for _, quest in ipairs(Workspace.QuestItems:GetChildren()) do
-        CreateObjectESP(QuestESP, quest, quest:FindFirstChild("Part") or quest, quest.Name, "QuestItems")
+        CreateObjectESP(QuestESPObjects, quest, quest.Name, quest:FindFirstChild("Part") or quest, "QuestItems")
     end
     Workspace.QuestItems.ChildAdded:Connect(function(quest)
-        CreateObjectESP(QuestESP, quest, quest:FindFirstChild("Part") or quest, quest.Name, "QuestItems")
+        CreateObjectESP(QuestESPObjects, quest, quest.Name, quest:FindFirstChild("Part") or quest, "QuestItems")
     end)
 end
 
+-- Vehicles
 if Workspace:FindFirstChild("Vehicles") then
     for _, veh in ipairs(Workspace.Vehicles:GetChildren()) do
-        CreateObjectESP(VehicleESP, veh, veh:FindFirstChild("PrimaryPart") or veh, veh.Name, "Vehicles")
+        CreateObjectESP(VehicleESPObjects, veh, veh.Name, veh:FindFirstChild("PrimaryPart") or veh, "Vehicles")
     end
     Workspace.Vehicles.ChildAdded:Connect(function(veh)
-        CreateObjectESP(VehicleESP, veh, veh:FindFirstChild("PrimaryPart") or veh, veh.Name, "Vehicles")
+        CreateObjectESP(VehicleESPObjects, veh, veh.Name, veh:FindFirstChild("PrimaryPart") or veh, "Vehicles")
     end)
 end
 
--- ███████████████████████████████████████████████████████
--- DEATH HISTORY
--- ███████████████████████████████████████████████████████
-local DeathESP = {}
-local DeathCounter = 0
-
-local function OnPlayerDied(player)
+-- Death History
+local function OnPlayerDied(player, humanoid)
     if not Settings.Visuals.DeathHistory.Enabled then return end
-    local char = player.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+    local character = player.Character
+    if not character then return end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
     DeathCounter = DeathCounter + 1
-    local text = Drawing.new("Text")
-    text.Size = 14
-    text.Center = true
-    text.Outline = true
-    text.Font = 2
-    table.insert(DeathESP, { pos = root.Position, text = text, count = DeathCounter })
+    local deathEntry = {
+        position = rootPart.Position,
+        time = tick(),
+        count = DeathCounter,
+        text = DataHub.Utilities.Drawing.AddDrawing("Text", { Size = 14, Center = true, Outline = true, Font = 2, Color = Color3.new(1,0,0) })
+    }
+    table.insert(DeathHistory, deathEntry)
+    -- Удалять старые через время можно добавить позже
 end
 
-local function UpdateDeathESP()
+for _, player in ipairs(Players:GetPlayers()) do
+    if player.Character then
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.Died:Connect(function()
+                OnPlayerDied(player, humanoid)
+            end)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        local humanoid = character:WaitForChild("Humanoid")
+        humanoid.Died:Connect(function()
+            OnPlayerDied(player, humanoid)
+        end)
+    end)
+end)
+
+-- Обновление Death History
+local function UpdateDeathHistory()
     if not Settings.Visuals.DeathHistory.Enabled then
-        for _, entry in ipairs(DeathESP) do
+        for _, entry in ipairs(DeathHistory) do
             entry.text.Visible = false
         end
         return
     end
-    local color = Color3.fromHSV(
-        Settings.Visuals.DeathHistory.Color[1] or 0,
-        Settings.Visuals.DeathHistory.Color[2] or 1,
-        Settings.Visuals.DeathHistory.Color[3] or 1
-    )
+    local color = GetColorFromHSV(Settings.Visuals.DeathHistory.Color)
     local maxDist = Settings.Visuals.General.MaxDistance
-    for _, entry in ipairs(DeathESP) do
-        local screenPos, onScreen = Camera:WorldToViewportPoint(entry.pos)
+    for _, entry in ipairs(DeathHistory) do
+        local screenPos, onScreen = Camera:WorldToViewportPoint(entry.position)
         if onScreen then
-            local dist = (entry.pos - Camera.CFrame.Position).Magnitude
+            local dist = (entry.position - Camera.CFrame.Position).Magnitude
             if dist <= maxDist then
                 entry.text.Visible = true
                 entry.text.Text = "☠️ " .. entry.count
@@ -991,59 +930,48 @@ local function UpdateDeathESP()
     end
 end
 
--- Подключение событий смерти
-for _, player in ipairs(Players:GetPlayers()) do
-    if player.Character then
-        local hum = player.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.Died:Connect(function() OnPlayerDied(player) end)
-        end
-    end
-end
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(char)
-        local hum = char:WaitForChild("Humanoid")
-        hum.Died:Connect(function() OnPlayerDied(player) end)
-    end)
-end)
-
--- ███████████████████████████████████████████████████████
--- MAIN RENDER LOOP
--- ███████████████████████████████████████████████████████
+-- Главный цикл обновления визуалов
 RunService.RenderStepped:Connect(function()
     if not Settings.Visuals.General.Enabled then
-        for _, esp in pairs(PlayerESP) do
-            for _, line in ipairs(esp.BoxLines) do line.Visible = false end
-            esp.Name.Visible = false
-            esp.Distance.Visible = false
-            esp.Tracer.Visible = false
-            for _, line in ipairs(esp.HealthBar) do line.Visible = false end
-            for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
+        -- скрыть всё
+        for _, player in pairs(ESPObjects) do
+            if player.Name then player.Name.Visible = false end
+            if player.Distance then player.Distance.Visible = false end
+            if player.Tracer then
+                player.Tracer.Main.Visible = false
+                player.Tracer.Outline.Visible = false
+            end
+            if player.HeadDot then
+                player.HeadDot.Main.Visible = false
+                player.HeadDot.Outline.Visible = false
+            end
+            for _, line in ipairs(player.Box.Lines) do
+                line.Visible = false
+            end
         end
-        for _, list in ipairs({ItemESP, QuestESP, VehicleESP}) do
-            for _, entry in ipairs(list) do entry.text.Visible = false end
-        end
-        for _, entry in ipairs(DeathESP) do entry.text.Visible = false end
+        for _, entry in ipairs(ItemESPObjects) do entry.text.Visible = false end
+        for _, entry in ipairs(QuestESPObjects) do entry.text.Visible = false end
+        for _, entry in ipairs(VehicleESPObjects) do entry.text.Visible = false end
+        for _, entry in ipairs(DeathHistory) do entry.text.Visible = false end
         return
     end
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer or Settings.Visuals.General.IncludeNPC then
-            if not PlayerESP[player] then
-                CreatePlayerESP(player)
+            if not ESPObjects[player] then
+                CreateESPForPlayer(player)
             end
-            UpdatePlayerESP(player)
+            UpdateESPForPlayer(player)
         end
     end
 
-    UpdateObjectESP(ItemESP, "ItemText")
-    UpdateObjectESP(QuestESP, "QuestItems")
-    UpdateObjectESP(VehicleESP, "Vehicles")
-    UpdateDeathESP()
+    UpdateObjectESP(ItemESPObjects, "ItemText")
+    UpdateObjectESP(QuestESPObjects, "QuestItems")
+    UpdateObjectESP(VehicleESPObjects, "Vehicles")
+    UpdateDeathHistory()
 end)
 
--- Zoom
+-- Обработка Zoom
 RunService.RenderStepped:Connect(function()
     if Settings.Visuals.Zoom.Enabled then
         Camera.FieldOfView = 70 - Settings.Visuals.Zoom.Level
@@ -1052,7 +980,5 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Очистка
-Players.PlayerRemoving:Connect(RemovePlayerESP)
-
-print("Data Hub - Project Delta (Minimal ESP) loaded")
+print("Data Hub - Ultimate Edition loaded")
+print("All ESP features enabled.")
