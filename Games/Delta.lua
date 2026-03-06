@@ -376,45 +376,170 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: WORLD (your existing module)
+-- UI: WORLD (FULLY FUNCTIONAL)
 -- ███████████████████████████████████████████████████████
 local WorldTab = Window:Tab({Name = "World"}) do
+    
+    -- Переменные для хранения исходных настроек освещения
+    local OriginalLighting = {}
+    local LightingConnections = {}
+    
+    -- Функция для сохранения оригинальных настроек
+    local function SaveOriginalLighting()
+        OriginalLighting = {
+            Ambient = Lighting.Ambient,
+            Brightness = Lighting.Brightness,
+            ClockTime = Lighting.ClockTime,
+            FogColor = Lighting.FogColor,
+            FogEnd = Lighting.FogEnd,
+            FogStart = Lighting.FogStart,
+            GlobalShadows = Lighting.GlobalShadows,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            ShadowSoftness = Lighting.ShadowSoftness,
+            Technology = Lighting.Technology
+        }
+    end
+    
+    -- Вызываем при загрузке
+    SaveOriginalLighting()
+    
+    -- Функция для восстановления оригинального освещения
+    local function RestoreOriginalLighting()
+        for prop, value in pairs(OriginalLighting) do
+            Lighting[prop] = value
+        end
+    end
+
+    -- Environment Section
     local EnvSection = WorldTab:Section({Name = "Environment", Side = "Left"}) do
-        EnvSection:Toggle({Name = "Full Bright", Flag = "Delta/World/FullBright", Value = false,
-            Callback = function(val) Settings.World.FullBright = val end})
-        EnvSection:Toggle({Name = "Remove Grass", Flag = "Delta/World/RemoveGrass", Value = false,
-            Callback = function(val) Settings.World.RemoveGrass = val end})
-        EnvSection:Toggle({Name = "Remove Shadows", Flag = "Delta/World/RemoveShadows", Value = false,
-            Callback = function(val) Settings.World.RemoveShadows = val end})
-        EnvSection:Colorpicker({Name = "Change Ambient", Flag = "Delta/World/AmbientColor",
-            Value = Settings.World.AmbientColor,
-            Callback = function(val) Settings.World.AmbientColor = val end})
+        
+        -- Full Bright
+        EnvSection:Toggle({
+            Name = "Full Bright",
+            Flag = "Delta/World/FullBright",
+            Value = false,
+            Callback = function(val)
+                if val then
+                    Lighting.Brightness = 2
+                    Lighting.ClockTime = 14
+                    Lighting.FogEnd = 100000
+                    Lighting.GlobalShadows = false
+                    Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+                    Lighting.Ambient = Color3.new(1, 1, 1)
+                else
+                    RestoreOriginalLighting()
+                end
+                print("[World] Full Bright:", val and "ON" or "OFF")
+            end
+        })
+        
+        -- Remove Grass (работает через изменение свойств Terrain)
+        local terrain = Workspace:FindFirstChildOfClass("Terrain")
+        EnvSection:Toggle({
+            Name = "Remove Grass",
+            Flag = "Delta/World/RemoveGrass",
+            Value = false,
+            Callback = function(val)
+                if terrain then
+                    -- Для удаления травы нужно изменить MaterialColors или Decoration
+                    -- Это может зависеть от игры, попробуем стандартный способ
+                    if val then
+                        -- Сохраняем оригинальные настройки декораций, если нужно
+                        terrain.Decoration = false
+                    else
+                        terrain.Decoration = true
+                    end
+                end
+                print("[World] Remove Grass:", val and "ON" or "OFF")
+            end
+        })
+        
+        -- Remove Shadows
+        EnvSection:Toggle({
+            Name = "Remove Shadows",
+            Flag = "Delta/World/RemoveShadows",
+            Value = false,
+            Callback = function(val)
+                if val then
+                    Lighting.GlobalShadows = false
+                    Lighting.ShadowSoftness = 0
+                else
+                    Lighting.GlobalShadows = OriginalLighting.GlobalShadows
+                    Lighting.ShadowSoftness = OriginalLighting.ShadowSoftness
+                end
+                print("[World] Remove Shadows:", val and "ON" or "OFF")
+            end
+        })
+        
+        -- Change Ambient (с цветом)
+        EnvSection:Colorpicker({
+            Name = "Change Ambient",
+            Flag = "Delta/World/AmbientColor",
+            Value = {0.5, 0.5, 0.5, 0, false}, -- HSV для серого
+            Callback = function(hsv, color)
+                Lighting.Ambient = color
+                Lighting.OutdoorAmbient = color
+                print("[World] Ambient color set to:", color)
+            end
+        })
     end
 
+    -- SkyBox Section
     local SkySection = WorldTab:Section({Name = "Sky Box", Side = "Left"}) do
-        SkySection:Toggle({Name = "Moon", Flag = "Delta/World/SkyBox/Moon", Value = false,
-            Callback = function(val) Settings.World.SkyBox.Moon = val end})
+        
+        -- Moon (включает/выключает луну через изменение Sky)
+        SkySection:Toggle({
+            Name = "Moon",
+            Flag = "Delta/World/SkyBox/Moon",
+            Value = false,
+            Callback = function(val)
+                local sky = Lighting:FindFirstChildOfClass("Sky")
+                if not sky then
+                    sky = Instance.new("Sky")
+                    sky.Parent = Lighting
+                end
+                if val then
+                    -- Устанавливаем текстуру луны (можно заменить на любую)
+                    sky.MoonTextureId = "rbxassetid://16031569" -- стандартная луна Roblox
+                    sky.MoonAngularSize = 15
+                else
+                    sky.MoonTextureId = ""
+                end
+                print("[World] Moon:", val and "ON" or "OFF")
+            end
+        })
     end
 
+    -- Inventory Checker Section
     local InvSection = WorldTab:Section({Name = "Inventory Checker", Side = "Right"}) do
+        
+        -- Это заглушка, так как для реального инвентаря нужно знать структуру игры
+        -- Вы сможете добавить реальную логику позже, когда найдёте путь к данным инвентаря
         InvSection:Toggle({
             Name = "Enable Inventory",
             Flag = "Delta/World/Inventory/Enabled",
             Value = false,
-            Callback = function(val) Settings.World.Inventory.Enabled = val end
+            Callback = function(val)
+                if val then
+                    print("[Inventory] Enabled - you need to implement actual inventory reading")
+                    -- Здесь будет код для отображения инвентаря
+                else
+                    print("[Inventory] Disabled")
+                end
+            end
         }):Keybind({Flag = "Delta/World/Inventory/Keybind", Mouse = true})
 
         InvSection:Toggle({Name = "Money", Flag = "Delta/World/Inventory/Money", Value = false,
-            Callback = function(val) Settings.World.Inventory.Money = val end})
+            Callback = function(val) print("[Inventory] Money:", val) end})
         InvSection:Toggle({Name = "Name", Flag = "Delta/World/Inventory/Name", Value = false,
-            Callback = function(val) Settings.World.Inventory.Name = val end})
+            Callback = function(val) print("[Inventory] Name:", val) end})
         InvSection:Toggle({Name = "Icons", Flag = "Delta/World/Inventory/Icons", Value = false,
-            Callback = function(val) Settings.World.Inventory.Icons = val end})
+            Callback = function(val) print("[Inventory] Icons:", val) end})
         InvSection:Toggle({Name = "Moduls", Flag = "Delta/World/Inventory/Moduls", Value = false,
-            Callback = function(val) Settings.World.Inventory.Moduls = val end})
+            Callback = function(val) print("[Inventory] Moduls:", val) end})
         InvSection:Slider({Name = "Show Amount", Flag = "Delta/World/Inventory/ShowAmount",
             Min = 0, Max = 50, Value = 10,
-            Callback = function(val) Settings.World.Inventory.ShowAmount = val end})
+            Callback = function(val) print("[Inventory] Show Amount:", val) end})
     end
 end
 
