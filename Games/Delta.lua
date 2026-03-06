@@ -632,33 +632,53 @@ local function UpdatePlayerESP(player)
     local distanceColor = HSVToColor(Settings.Visuals.Distance.Color)
     local skeletonColor = HSVToColor(Settings.Visuals.Skeleton.Color)
 
-    -- Box
-    if Settings.Visuals.Box.Enabled then
-        local size = char:GetExtentsSize()
-        local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
-        local boxWidth = projSize.X
-        local boxHeight = projSize.Y
-        local pos = Vector2.new(screenPos.X - boxWidth/2, screenPos.Y - boxHeight/2)
-        local lines = esp.BoxLines
-        lines[1].From = pos
-        lines[1].To = pos + Vector2.new(boxWidth, 0)
-        lines[1].Color = boxColor
-        lines[1].Visible = true
-        lines[2].From = pos + Vector2.new(boxWidth, 0)
-        lines[2].To = pos + Vector2.new(boxWidth, boxHeight)
-        lines[2].Color = boxColor
-        lines[2].Visible = true
-        lines[3].From = pos + Vector2.new(boxWidth, boxHeight)
-        lines[3].To = pos + Vector2.new(0, boxHeight)
-        lines[3].Color = boxColor
-        lines[3].Visible = true
-        lines[4].From = pos + Vector2.new(0, boxHeight)
-        lines[4].To = pos
-        lines[4].Color = boxColor
-        lines[4].Visible = true
-    else
-        for _, line in ipairs(esp.BoxLines) do line.Visible = false end
+-- Box
+if Settings.Visuals.Box.Enabled then
+    -- Get the character's bounding box size
+    local size = char:GetExtentsSize()
+    
+    -- Calculate the projected size on screen, accounting for distance and camera field of view
+    local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView) / 2))
+    
+    -- Extract width and height from the projected size
+    local boxWidth = projSize.X
+    local boxHeight = projSize.Y
+    
+    -- Calculate the top-left position of the box, centered on the screen position
+    local pos = Vector2.new(screenPos.X - boxWidth / 2, screenPos.Y - boxHeight / 2)
+    
+    -- Reference to the box lines table
+    local lines = esp.BoxLines
+    
+    -- Top line
+    lines[1].From = pos
+    lines[1].To = pos + Vector2.new(boxWidth, 0)
+    lines[1].Color = boxColor
+    lines[1].Visible = true
+    
+    -- Right line
+    lines[2].From = pos + Vector2.new(boxWidth, 0)
+    lines[2].To = pos + Vector2.new(boxWidth, boxHeight)
+    lines[2].Color = boxColor
+    lines[2].Visible = true
+    
+    -- Bottom line
+    lines[3].From = pos + Vector2.new(boxWidth, boxHeight)
+    lines[3].To = pos + Vector2.new(0, boxHeight)
+    lines[3].Color = boxColor
+    lines[3].Visible = true
+    
+    -- Left line
+    lines[4].From = pos + Vector2.new(0, boxHeight)
+    lines[4].To = pos
+    lines[4].Color = boxColor
+    lines[4].Visible = true
+else
+    -- Hide all box lines if the box is disabled
+    for _, line in ipairs(esp.BoxLines) do
+        line.Visible = false
     end
+end
 
     -- Name
     if Settings.Visuals.Name.Enabled then
@@ -698,27 +718,43 @@ local function UpdatePlayerESP(player)
     end
 
     -- Health Bar (простая вертикальная линия слева)
-    if Settings.Visuals.Health.Bar then
-        local boxHeight = 150 * (1000 / math.max(dist, 1))
-        local barX = screenPos.X - 55
-        local barY = screenPos.Y - boxHeight/2
-        esp.HealthBar[1].From = Vector2.new(barX, barY)
-        esp.HealthBar[1].To = Vector2.new(barX, barY + boxHeight)
-        esp.HealthBar[1].Visible = true
-        local fillHeight = boxHeight * healthPercent
-        esp.HealthBar[2].From = Vector2.new(barX, barY + boxHeight)
-        esp.HealthBar[2].To = Vector2.new(barX, barY + boxHeight - fillHeight)
-        if Settings.Visuals.Health.ColorMode == "Green" then
-            esp.HealthBar[2].Color = Color3.new(0,1,0)
-        elseif Settings.Visuals.Health.ColorMode == "Red" then
-            esp.HealthBar[2].Color = Color3.new(1,0,0)
-        else
-            esp.HealthBar[2].Color = Color3.new(1 - healthPercent, healthPercent, 0)
-        end
-        esp.HealthBar[2].Visible = true
+if Settings.Visuals.Health.Bar then
+    -- Calculate the height of the health bar based on distance (scaled for perspective)
+    local boxHeight = 150 * (1000 / math.max(dist, 1))
+    
+    -- Position the bar to the left of the screen position, centered vertically
+    local barX = screenPos.X - 55
+    local barY = screenPos.Y - boxHeight / 2
+    
+    -- Set up the background line (full bar outline)
+    esp.HealthBar[1].From = Vector2.new(barX, barY)
+    esp.HealthBar[1].To = Vector2.new(barX, barY + boxHeight)
+    esp.HealthBar[1].Visible = true
+    
+    -- Calculate the filled portion height based on health percentage
+    local fillHeight = boxHeight * healthPercent
+    
+    -- Set up the filled health line (from bottom up, assuming Y increases downward)
+    esp.HealthBar[2].From = Vector2.new(barX, barY + boxHeight)
+    esp.HealthBar[2].To = Vector2.new(barX, barY + boxHeight - fillHeight)
+    
+    -- Determine the color based on the selected mode
+    if Settings.Visuals.Health.ColorMode == "Green" then
+        esp.HealthBar[2].Color = Color3.new(0, 1, 0)
+    elseif Settings.Visuals.Health.ColorMode == "Red" then
+        esp.HealthBar[2].Color = Color3.new(1, 0, 0)
     else
-        for _, line in ipairs(esp.HealthBar) do line.Visible = false end
+        -- Default: Gradient from red to green based on health percent
+        esp.HealthBar[2].Color = Color3.new(1 - healthPercent, healthPercent, 0)
     end
+    
+    esp.HealthBar[2].Visible = true
+else
+    -- Hide both lines if the bar is disabled
+    for _, line in ipairs(esp.HealthBar) do
+        line.Visible = false
+    end
+end
 
     -- Skeleton (как в предыдущей версии, но без лишнего)
     if Settings.Visuals.Skeleton.Enabled then
