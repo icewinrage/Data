@@ -761,115 +761,104 @@ end
 
     -- Skeleton (как в предыдущей версии, но без лишнего)
 if Settings.Visuals.Skeleton.Enabled then
-    local head = char:FindFirstChild("Head")
-    local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-    local rarm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm")
-    local larm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftUpperArm")
-    local rleg = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightUpperLeg")
-    local lleg = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftUpperLeg")
-    local rhand = char:FindFirstChild("RightHand")
-    local lhand = char:FindFirstChild("LeftHand")
-    local rfoot = char:FindFirstChild("RightFoot")
-    local lfoot = char:FindFirstChild("LeftFoot")
-    local function partPos(part)
-        if not part then return nil end
-        local pos, on = Camera:WorldToViewportPoint(part.Position)
-        if on then return Vector2.new(pos.X, pos.Y) end
-        return nil
-    end
-    local lines = esp.SkeletonLines
-    local idx = 1
-    local neckPos = head and partPos(head)
-    local torsoPos = torso and partPos(torso)
-    local root = char:FindFirstChild("HumanoidRootPart") or torso
-    local distance = root and (Camera.CFrame.Position - root.Position).Magnitude or 1
-    local thickness = math.clamp(100 / distance, 1.5, 3)  -- Динамическая толщина: толще вблизи, но не меньше 1.5; на расстоянии тоньше, но visible
-    if head and torso and neckPos and torsoPos then
-        lines[idx].From = neckPos
-        lines[idx].To = torsoPos
-        lines[idx].Color = skeletonColor
-        lines[idx].Thickness = thickness
-        lines[idx].Visible = true
-        idx = idx + 1
-    end
-    local rarmPos = rarm and partPos(rarm)
-    local larmPos = larm and partPos(larm)
-    if torso and rarmPos then
-        lines[idx].From = torsoPos
-        lines[idx].To = rarmPos
-        lines[idx].Color = skeletonColor
-        lines[idx].Thickness = thickness
-        lines[idx].Visible = true
-        idx = idx + 1
-    end
-    if torso and larmPos then
-        lines[idx].From = torsoPos
-        lines[idx].To = larmPos
-        lines[idx].Color = skeletonColor
-        lines[idx].Thickness = thickness
-        lines[idx].Visible = true
-        idx = idx + 1
-    end
-    local rhandPos = rhand and partPos(rhand)
-    local lhandPos = lhand and partPos(lhand)
-    if rarmPos and rhandPos then
-        lines[idx].From = rarmPos
-        lines[idx].To = rhandPos
-        lines[idx].Color = skeletonColor
-        lines[idx].Thickness = thickness
-        lines[idx].Visible = true
-        idx = idx + 1
-    end
-    if larmPos and lhandPos then
-        lines[idx].From = larmPos
-        lines[idx].To = lhandPos
-        lines[idx].Color = skeletonColor
-        lines[idx].Thickness = thickness
-        lines[idx].Visible = true
-        idx = idx + 1
-    end
-    local rlegPos = rleg and partPos(rleg)
-    local llegPos = lleg and partPos(lleg)
-    if torso and rlegPos then
-        lines[idx].From = torsoPos
-        lines[idx].To = rlegPos
-        lines[idx].Color = skeletonColor
-        lines[idx].Thickness = thickness
-        lines[idx].Visible = true
-        idx = idx + 1
-    end
-    if torso and llegPos then
-        lines[idx].From = torsoPos
-        lines[idx].To = llegPos
-        lines[idx].Color = skeletonColor
-        lines[idx].Thickness = thickness
-        lines[idx].Visible = true
-        idx = idx + 1
-    end
-    local rfootPos = rfoot and partPos(rfoot)
-    local lfootPos = lfoot and partPos(lfoot)
-    if rlegPos and rfootPos then
-        lines[idx].From = rlegPos
-        lines[idx].To = rfootPos
-        lines[idx].Color = skeletonColor
-        lines[idx].Thickness = thickness
-        lines[idx].Visible = true
-        idx = idx + 1
-    end
-    if llegPos and lfootPos then
-        lines[idx].From = llegPos
-        lines[idx].To = lfootPos
-        lines[idx].Color = skeletonColor
-        lines[idx].Thickness = thickness
-        lines[idx].Visible = true
-        idx = idx + 1
-    end
-    while idx <= #lines do
-        lines[idx].Visible = false
-        idx = idx + 1
-    end
-else
-    for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
+        local head = char:FindFirstChild("Head")
+        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+        local rarm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightUpperArm")
+        local larm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftUpperArm")
+        local rleg = char:FindFirstChild("Right Leg") or char:FindFirstChild("RightUpperLeg")
+        local lleg = char:FindFirstChild("Left Leg") or char:FindFirstChild("LeftUpperLeg")
+        local rhand = char:FindFirstChild("RightHand")
+        local lhand = char:FindFirstChild("LeftHand")
+        local rfoot = char:FindFirstChild("RightFoot")
+        local lfoot = char:FindFirstChild("LeftFoot")
+        local function partPos(part)
+            if not part then return nil end
+            local pos, on = Camera:WorldToViewportPoint(part.Position)
+            if on then return Vector2.new(pos.X, pos.Y) end
+            return nil
+        end
+        local lines = esp.SkeletonLines
+        local idx = 1
+        local neckPos = head and partPos(head)
+        local torsoPos = torso and partPos(torso)
+        if head and torso and neckPos and torsoPos then
+            lines[idx].From = neckPos
+            lines[idx].To = torsoPos
+            lines[idx].Color = skeletonColor
+            lines[idx].Visible = true
+            idx = idx + 1
+        end
+        local rarmPos = rarm and partPos(rarm)
+        local larmPos = larm and partPos(larm)
+        if torso and rarmPos then
+            lines[idx].From = torsoPos
+            lines[idx].To = rarmPos
+            lines[idx].Color = skeletonColor
+            lines[idx].Visible = true
+            idx = idx + 1
+        end
+        if torso and larmPos then
+            lines[idx].From = torsoPos
+            lines[idx].To = larmPos
+            lines[idx].Color = skeletonColor
+            lines[idx].Visible = true
+            idx = idx + 1
+        end
+        local rhandPos = rhand and partPos(rhand)
+        local lhandPos = lhand and partPos(lhand)
+        if rarmPos and rhandPos then
+            lines[idx].From = rarmPos
+            lines[idx].To = rhandPos
+            lines[idx].Color = skeletonColor
+            lines[idx].Visible = true
+            idx = idx + 1
+        end
+        if larmPos and lhandPos then
+            lines[idx].From = larmPos
+            lines[idx].To = lhandPos
+            lines[idx].Color = skeletonColor
+            lines[idx].Visible = true
+            idx = idx + 1
+        end
+        local rlegPos = rleg and partPos(rleg)
+        local llegPos = lleg and partPos(lleg)
+        if torso and rlegPos then
+            lines[idx].From = torsoPos
+            lines[idx].To = rlegPos
+            lines[idx].Color = skeletonColor
+            lines[idx].Visible = true
+            idx = idx + 1
+        end
+        if torso and llegPos then
+            lines[idx].From = torsoPos
+            lines[idx].To = llegPos
+            lines[idx].Color = skeletonColor
+            lines[idx].Visible = true
+            idx = idx + 1
+        end
+        local rfootPos = rfoot and partPos(rfoot)
+        local lfootPos = lfoot and partPos(lfoot)
+        if rlegPos and rfootPos then
+            lines[idx].From = rlegPos
+            lines[idx].To = rfootPos
+            lines[idx].Color = skeletonColor
+            lines[idx].Visible = true
+            idx = idx + 1
+        end
+        if llegPos and lfootPos then
+            lines[idx].From = llegPos
+            lines[idx].To = lfootPos
+            lines[idx].Color = skeletonColor
+            lines[idx].Visible = true
+            idx = idx + 1
+        end
+        while idx <= #lines do
+            lines[idx].Visible = false
+            idx = idx + 1
+        end
+    else
+        for _, line in ipairs(esp.SkeletonLines) do line.Visible = false end
+    end
 end
 
 -- ███████████████████████████████████████████████████████
