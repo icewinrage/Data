@@ -1,4 +1,4 @@
--- Data Hub - Project Delta (Final Tuned ESP)
+-- Data Hub - Project Delta (Optimized ESP without chams/outlines)
 -- Game ID: 2862098693
 -- Features: Custom ESP (players, items, quests, vehicles, death history), RageBot, Gun Mods, World, Misc
 
@@ -697,21 +697,14 @@ local function UpdatePlayerESP(player)
         esp.Tracer.Visible = false
     end
 
-    -- Health Bar (привязан к высоте бокса)
-    if Settings.Visuals.Health.Bar and Settings.Visuals.Box.Enabled then
-        -- Используем ту же высоту, что и у бокса
-        local size = char:GetExtentsSize()
-        local projSize = (size * Camera.ViewportSize.Y) / (2 * dist * math.tan(math.rad(Camera.FieldOfView)/2))
-        local boxHeight = projSize.Y
-        local boxWidth = projSize.X
-        local boxPos = Vector2.new(screenPos.X - boxWidth/2, screenPos.Y - boxHeight/2)
-
-        local barX = boxPos.X - 6 -- слева от бокса
-        local barY = boxPos.Y
+    -- Health Bar (простая вертикальная линия слева)
+    if Settings.Visuals.Health.Bar then
+        local boxHeight = 150 * (1000 / math.max(dist, 1))
+        local barX = screenPos.X - 55
+        local barY = screenPos.Y - boxHeight/2
         esp.HealthBar[1].From = Vector2.new(barX, barY)
         esp.HealthBar[1].To = Vector2.new(barX, barY + boxHeight)
         esp.HealthBar[1].Visible = true
-
         local fillHeight = boxHeight * healthPercent
         esp.HealthBar[2].From = Vector2.new(barX, barY + boxHeight)
         esp.HealthBar[2].To = Vector2.new(barX, barY + boxHeight - fillHeight)
@@ -727,7 +720,7 @@ local function UpdatePlayerESP(player)
         for _, line in ipairs(esp.HealthBar) do line.Visible = false end
     end
 
-    -- Skeleton (без изменений)
+    -- Skeleton (как в предыдущей версии, но без лишнего)
     if Settings.Visuals.Skeleton.Enabled then
         local head = char:FindFirstChild("Head")
         local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
@@ -838,7 +831,7 @@ local function UpdatePlayerESP(player)
 end
 
 -- ███████████████████████████████████████████████████████
--- ESP ДЛЯ ОБЪЕКТОВ (Containers, QuestItems, Vehicles)
+-- ESP ДЛЯ ОБЪЕКТОВ (items, quests, vehicles)
 -- ███████████████████████████████████████████████████████
 
 local ItemESP = {}
@@ -887,7 +880,7 @@ local function UpdateObjectESP(list, flag)
     end
 end
 
--- Инициализация существующих объектов (Containers, QuestItems, Vehicles)
+-- Инициализация объектов
 if Workspace:FindFirstChild("Containers") then
     for _, container in ipairs(Workspace.Containers:GetChildren()) do
         CreateObjectESP(ItemESP, container, container:FindFirstChild("Part") or container, container.Name, "ItemText")
@@ -1031,5 +1024,4 @@ end)
 -- Очистка
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
-print("Data Hub - Project Delta (Final Tuned ESP) loaded")
-print("Paths: Workspace.Containers, Workspace.QuestItems, Workspace.Vehicles")
+print("Data Hub - Project Delta (Minimal ESP) loaded")
