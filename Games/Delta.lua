@@ -69,7 +69,7 @@ local Settings = {
         },
         Shifter = {
             Enabled = false,
-            Color = {0, 1, 0, 0, false}   -- зелёный
+            Color = {1, 1, 1, 0, false}   -- зелёный
         },
         Health = {
             Bar = false,
