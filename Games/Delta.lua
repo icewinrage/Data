@@ -690,231 +690,325 @@ end
         }
     end
     
-    -- Функция для создания Inventory UI
-    local function CreateInventoryUI(data)
-        for _, obj in pairs(InventoryLines) do
-            if obj.Remove then obj:Remove() end
-        end
-        InventoryLines = {}
-        
-        if not data or #data.Items == 0 then
-            local text = Drawing.new("Text")
-            text.Size = 18
-            text.Center = false
-            text.Outline = true
-            text.Font = 2
-            text.Color = Color3.new(1, 1, 1)
-            text.Position = Vector2.new(Camera.ViewportSize.X - 220, 100)
-            text.Text = "Empty Inventory"
-            text.Visible = true
-            table.insert(InventoryLines, text)
-            return
-        end
-        
-        local title = Drawing.new("Text")
-        title.Size = 20
-        title.Center = false
-        title.Outline = true
-        title.Font = 2
-        title.Color = Color3.new(1, 1, 0)
-        title.Position = Vector2.new(Camera.ViewportSize.X - 220, 50)
-        title.Text = data.Player.Name .. "'s Inventory"
-        title.Visible = true
-        table.insert(InventoryLines, title)
-        
-        local valueText = Drawing.new("Text")
-        valueText.Size = 16
-        valueText.Center = false
-        valueText.Outline = true
-        valueText.Font = 2
-        valueText.Color = Color3.new(0, 1, 0)
-        valueText.Position = Vector2.new(Camera.ViewportSize.X - 220, 75)
-        valueText.Text = string.format("Total Value: $%d", data.TotalValue)
-        valueText.Visible = true
-        table.insert(InventoryLines, valueText)
-        
-        local countText = Drawing.new("Text")
-        countText.Size = 14
-        countText.Center = false
-        countText.Outline = true
-        countText.Font = 2
-        countText.Color = Color3.new(1, 1, 1)
-        countText.Position = Vector2.new(Camera.ViewportSize.X - 220, 95)
-        countText.Text = string.format("Items: %d", data.ItemCount)
-        countText.Visible = true
-        table.insert(InventoryLines, countText)
-        
-        local line = Drawing.new("Line")
-        line.From = Vector2.new(Camera.ViewportSize.X - 240, 115)
-        line.To = Vector2.new(Camera.ViewportSize.X - 40, 115)
-        line.Color = Color3.new(1, 1, 1)
-        line.Thickness = 2
-        line.Visible = true
-        table.insert(InventoryLines, line)
-        
-        local yPos = 130
-        local maxItems = math.min(#data.Items, Settings.World.Inventory.MaxItems or 30)
-        
-        for i = 1, maxItems do
-            local item = data.Items[i]
-            
-            local nameText = Drawing.new("Text")
-            nameText.Size = 14
-            nameText.Center = false
-            nameText.Outline = true
-            nameText.Font = 2
-            nameText.Color = Color3.new(1, 1, 1)
-            nameText.Position = Vector2.new(Camera.ViewportSize.X - 220, yPos)
-            nameText.Text = item.Name
-            nameText.Visible = true
-            table.insert(InventoryLines, nameText)
-            
-            if item.Value > 0 then
-                local valueItemText = Drawing.new("Text")
-                valueItemText.Size = 12
-                valueItemText.Center = false
-                valueItemText.Outline = true
-                valueItemText.Font = 2
-                valueItemText.Color = Color3.new(0, 1, 0)
-                valueItemText.Position = Vector2.new(Camera.ViewportSize.X - 80, yPos)
-                valueItemText.Text = string.format("$%d", item.Value)
-                valueItemText.Visible = true
-                table.insert(InventoryLines, valueItemText)
-            end
-            
-            yPos = yPos + 18
-        end
-        
-        if #data.Items > maxItems then
-            local moreText = Drawing.new("Text")
-            moreText.Size = 12
-            moreText.Center = false
-            moreText.Outline = true
-            moreText.Font = 2
-            moreText.Color = Color3.new(1, 1, 0)
-            moreText.Position = Vector2.new(Camera.ViewportSize.X - 220, yPos)
-            moreText.Text = string.format("... and %d more", #data.Items - maxItems)
-            moreText.Visible = true
-            table.insert(InventoryLines, moreText)
-            yPos = yPos + 18
-        end
-        
-        local frame = Drawing.new("Square")
-        frame.Size = Vector2.new(220, yPos + 10 - 50)
-        frame.Position = Vector2.new(Camera.ViewportSize.X - 240, 40)
-        frame.Color = Color3.new(0, 0, 0)
-        frame.Filled = true
-        frame.Transparency = 0.5
-        frame.Visible = true
-        table.insert(InventoryLines, frame)
-        
-        local outline = Drawing.new("Square")
-        outline.Size = Vector2.new(220, yPos + 10 - 50)
-        outline.Position = Vector2.new(Camera.ViewportSize.X - 240, 40)
-        outline.Color = Color3.new(1, 1, 1)
-        outline.Filled = false
-        outline.Thickness = 2
-        outline.Visible = true
-        table.insert(InventoryLines, outline)
+-- ███████████████████████████████████████████████████████
+-- INVENTORY CHECKER SYSTEM (FINAL VERSION)
+-- ███████████████████████████████████████████████████████
+
+-- Переменные для Inventory Checker
+local InventoryVisible = false
+local InventoryTarget = nil
+local InventoryLines = {}
+local InventoryKeybind = Enum.KeyCode.C
+local KeyPressed = false
+
+-- Функция для получения данных инвентаря игрока
+local function GetPlayerInventory(player)
+    if not player then return nil end
+    
+    local playersFolder = ReplicatedStorage:FindFirstChild("Players")
+    if not playersFolder then 
+        print("Players folder not found")
+        return nil 
     end
     
-    -- Функция для поиска игрока под прицелом
-    local function GetTargetPlayer()
-        local mousePos = UserInputService:GetMouseLocation()
-        local ray = Camera:ScreenPointToRay(mousePos.X, mousePos.Y)
+    local playerData = playersFolder:FindFirstChild(player.Name)
+    if not playerData then 
+        print("Player data not found for:", player.Name)
+        return nil 
+    end
+    
+    local inventory = playerData:FindFirstChild("Inventory")
+    if not inventory then 
+        print("Inventory folder not found for:", player.Name)
+        return nil 
+    end
+    
+    -- Собираем все предметы
+    local items = {}
+    local totalValue = 0
+    
+    for _, item in ipairs(inventory:GetChildren()) do
+        -- Ищем стоимость в разных возможных местах
+        local valueObj = item:FindFirstChild("Value") or 
+                        item:FindFirstChild("Price") or 
+                        item:FindFirstChild("Cost") or
+                        item:FindFirstChild("Worth")
         
-        local params = RaycastParams.new()
-        params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
-        params.FilterType = Enum.RaycastFilterType.Blacklist
+        local itemValue = 0
+        if valueObj then
+            -- Проверяем тип значения
+            if valueObj:IsA("NumberValue") then
+                itemValue = valueObj.Value
+            elseif valueObj:IsA("StringValue") then
+                itemValue = tonumber(valueObj.Value) or 0
+            end
+        end
         
-        local hit = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+        totalValue = totalValue + itemValue
         
-        if hit and hit.Instance then
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer then
-                    local char = player.Character
-                    if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
-                        if hit.Instance:IsDescendantOf(char) then
-                            return player
-                        end
+        table.insert(items, {
+            Name = item.Name,
+            Value = itemValue,
+            Instance = item
+        })
+    end
+    
+    -- Сортируем по стоимости (дорогие сверху)
+    table.sort(items, function(a, b) return a.Value > b.Value end)
+    
+    print("Found", #items, "items for", player.Name, "total value:", totalValue)
+    
+    return {
+        Player = player,
+        Items = items,
+        TotalValue = totalValue,
+        ItemCount = #items
+    }
+end
+
+-- Функция для создания Inventory UI
+local function CreateInventoryUI(data)
+    -- Очищаем старый UI
+    for _, obj in pairs(InventoryLines) do
+        pcall(function() obj:Destroy() end)
+    end
+    InventoryLines = {}
+    
+    if not data or #data.Items == 0 then
+        -- Пустой инвентарь
+        local text = Drawing.new("Text")
+        text.Size = 18
+        text.Center = false
+        text.Outline = true
+        text.Font = 2
+        text.Color = Color3.new(1, 1, 1)
+        text.Position = Vector2.new(50, 100)
+        text.Text = "Empty Inventory"
+        text.Visible = true
+        table.insert(InventoryLines, text)
+        return
+    end
+    
+    local startY = 100
+    local currentY = startY
+    local maxWidth = 0
+    
+    -- Заголовок с именем игрока
+    local title = Drawing.new("Text")
+    title.Size = 22
+    title.Center = false
+    title.Outline = true
+    title.Font = 2
+    title.Color = Color3.new(1, 1, 0)
+    title.Position = Vector2.new(50, currentY)
+    title.Text = data.Player.Name .. "'s Inventory"
+    title.Visible = true
+    table.insert(InventoryLines, title)
+    maxWidth = math.max(maxWidth, title.TextBounds.X)
+    currentY = currentY + 30
+    
+    -- Информация о стоимости
+    local valueText = Drawing.new("Text")
+    valueText.Size = 18
+    valueText.Center = false
+    valueText.Outline = true
+    valueText.Font = 2
+    valueText.Color = Color3.new(0, 1, 0)
+    valueText.Position = Vector2.new(50, currentY)
+    valueText.Text = string.format("Total Value: $%d", data.TotalValue)
+    valueText.Visible = true
+    table.insert(InventoryLines, valueText)
+    maxWidth = math.max(maxWidth, valueText.TextBounds.X)
+    currentY = currentY + 25
+    
+    -- Количество предметов
+    local countText = Drawing.new("Text")
+    countText.Size = 16
+    countText.Center = false
+    countText.Outline = true
+    countText.Font = 2
+    countText.Color = Color3.new(1, 1, 1)
+    countText.Position = Vector2.new(50, currentY)
+    countText.Text = string.format("Items: %d", data.ItemCount)
+    countText.Visible = true
+    table.insert(InventoryLines, countText)
+    maxWidth = math.max(maxWidth, countText.TextBounds.X)
+    currentY = currentY + 25
+    
+    -- Разделительная линия
+    local line = Drawing.new("Line")
+    line.From = Vector2.new(50, currentY - 10)
+    line.To = Vector2.new(50 + maxWidth + 20, currentY - 10)
+    line.Color = Color3.new(1, 1, 1)
+    line.Thickness = 2
+    line.Visible = true
+    table.insert(InventoryLines, line)
+    currentY = currentY + 5
+    
+    -- Список предметов
+    for i, item in ipairs(data.Items) do
+        -- Название предмета
+        local nameText = Drawing.new("Text")
+        nameText.Size = 15
+        nameText.Center = false
+        nameText.Outline = true
+        nameText.Font = 2
+        nameText.Color = Color3.new(1, 1, 1)
+        nameText.Position = Vector2.new(50, currentY)
+        nameText.Text = item.Name
+        nameText.Visible = true
+        table.insert(InventoryLines, nameText)
+        
+        -- Стоимость
+        local valueItemText = Drawing.new("Text")
+        valueItemText.Size = 14
+        valueItemText.Center = false
+        valueItemText.Outline = true
+        valueItemText.Font = 2
+        valueItemText.Color = item.Value > 0 and Color3.new(0, 1, 0) or Color3.new(1, 1, 1)
+        valueItemText.Position = Vector2.new(50 + maxWidth + 30, currentY)
+        valueItemText.Text = string.format("$%d", item.Value)
+        valueItemText.Visible = true
+        table.insert(InventoryLines, valueItemText)
+        
+        currentY = currentY + 20
+    end
+    
+    -- Фоновая рамка
+    local bgWidth = maxWidth + 100
+    local bgHeight = currentY - startY + 20
+    
+    local background = Drawing.new("Square")
+    background.Size = Vector2.new(bgWidth, bgHeight)
+    background.Position = Vector2.new(40, startY - 10)
+    background.Color = Color3.new(0, 0, 0)
+    background.Filled = true
+    background.Transparency = 0.7
+    background.Visible = true
+    table.insert(InventoryLines, background)
+    
+    local outline = Drawing.new("Square")
+    outline.Size = Vector2.new(bgWidth, bgHeight)
+    outline.Position = Vector2.new(40, startY - 10)
+    outline.Color = Color3.new(1, 1, 1)
+    outline.Filled = false
+    outline.Thickness = 2
+    outline.Visible = true
+    table.insert(InventoryLines, outline)
+end
+
+-- Функция для поиска игрока под прицелом
+local function GetTargetPlayer()
+    local mousePos = UserInputService:GetMouseLocation()
+    local ray = Camera:ScreenPointToRay(mousePos.X, mousePos.Y)
+    
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local hit = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+    
+    if hit and hit.Instance then
+        -- Ищем игрока, которому принадлежит эта часть
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local char = player.Character
+                if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
+                    if hit.Instance:IsDescendantOf(char) then
+                        return player
                     end
                 end
             end
         end
-        
-        return nil
     end
     
-    -- Функция для переключения инвентаря
-    local function ToggleInventory()
+    return nil
+end
+
+-- Функция для показа инвентаря
+local function ShowInventory()
+    if InventoryVisible then
+        -- Скрываем текущий инвентарь
+        InventoryVisible = false
+        InventoryTarget = nil
+        for _, obj in pairs(InventoryLines) do
+            pcall(function() obj:Destroy() end)
+        end
+        InventoryLines = {}
+    else
+        -- Ищем игрока под прицелом
+        local target = GetTargetPlayer()
+        if target then
+            local data = GetPlayerInventory(target)
+            if data and #data.Items > 0 then
+                InventoryTarget = target
+                InventoryVisible = true
+                CreateInventoryUI(data)
+                print("Showing inventory for:", target.Name)
+            else
+                -- Нет предметов
+                InventoryTarget = target
+                InventoryVisible = true
+                local emptyData = {
+                    Player = target,
+                    Items = {},
+                    TotalValue = 0,
+                    ItemCount = 0
+                }
+                CreateInventoryUI(emptyData)
+            end
+        else
+            print("No player targeted")
+        end
+    end
+end
+
+-- Обработка зажатой клавиши
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == InventoryKeybind then
+        KeyPressed = true
+        ShowInventory()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.KeyCode == InventoryKeybind then
+        KeyPressed = false
+        -- Скрываем инвентарь когда отпускаем клавишу
         if InventoryVisible then
             InventoryVisible = false
             InventoryTarget = nil
             for _, obj in pairs(InventoryLines) do
-                if obj.Remove then obj:Remove() end
+                pcall(function() obj:Destroy() end)
             end
             InventoryLines = {}
-        else
-            local target = GetTargetPlayer()
-            if target then
-                local data = GetPlayerInventory(target)
-                if data then
-                    InventoryTarget = target
-                    InventoryVisible = true
-                    CreateInventoryUI(data)
-                else
-                    local text = Drawing.new("Text")
-                    text.Size = 18
-                    text.Center = true
-                    text.Outline = true
-                    text.Font = 2
-                    text.Color = Color3.new(1, 0, 0)
-                    text.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-                    text.Text = "No inventory data"
-                    text.Visible = true
-                    table.insert(InventoryLines, text)
-                    
-                    task.delay(2, function()
-                        if text then text:Remove() end
-                    end)
-                end
-            else
-                local text = Drawing.new("Text")
-                text.Size = 18
-                text.Center = true
-                text.Outline = true
-                text.Font = 2
-                text.Color = Color3.new(1, 0, 0)
-                text.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-                text.Text = "No player targeted"
-                text.Visible = true
-                table.insert(InventoryLines, text)
-                
-                task.delay(2, function()
-                    if text then text:Remove() end
-                end)
-            end
         end
     end
-    
-    -- Подключаем обработку клавиш
-    local function SetupInventoryKeybind(key)
-        InventoryKeybind = key
-    end
-    
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if not gameProcessed and input.KeyCode == InventoryKeybind then
-            ToggleInventory()
-        end
-    end)
-    
-    RunService.Heartbeat:Connect(function()
-        if InventoryVisible and InventoryTarget then
-            if not InventoryTarget.Character or not InventoryTarget.Character:FindFirstChildOfClass("Humanoid") or InventoryTarget.Character.Humanoid.Health <= 0 then
-                ToggleInventory()
+end)
+
+-- Обновляем позицию при изменении размера окна (опционально)
+RunService.Heartbeat:Connect(function()
+    if InventoryVisible and InventoryTarget then
+        -- Проверяем, жив ли ещё игрок
+        if not InventoryTarget.Character or 
+           not InventoryTarget.Character:FindFirstChildOfClass("Humanoid") or 
+           InventoryTarget.Character.Humanoid.Health <= 0 then
+            -- Закрываем если игрок мёртв
+            InventoryVisible = false
+            InventoryTarget = nil
+            for _, obj in pairs(InventoryLines) do
+                pcall(function() obj:Destroy() end)
             end
+            InventoryLines = {}
         end
-    end)
+    end
+end)
+
+-- Функция для установки клавиши (будет вызвана из UI)
+local function SetInventoryKeybind(key)
+    InventoryKeybind = key
+    print("Inventory keybind set to:", key)
+end
     
     -- Environment Section
     local EnvSection = WorldTab:Section({Name = "Environment", Side = "Left"}) do
@@ -1037,23 +1131,15 @@ end
             end
         })
         
-        local keybindButton = InvSection:Toggle({
+         InvSection:Keybind({
             Name = "Inventory Keybind",
-            Flag = "Delta/World/Inventory/KeybindToggle",
-            Value = false
-        })
-        
-        keybindButton:Keybind({
             Flag = "Delta/World/Inventory/Keybind",
-            Value = "I",
+            Value = "C",
             Mouse = false,
-            Callback = function(key, state)
-                if not state and key ~= "Unknown" then
-                    SetupInventoryKeybind(key)
-                    print("[Inventory] Keybind set to:", key)
-                end
-            end
-        })
+            Callback = function(key)
+             SetInventoryKeybind(key)
+           end
+       })
         
         InvSection:Toggle({Name = "Show Money", Flag = "Delta/World/Inventory/Money", Value = true,
             Callback = function(val) 
