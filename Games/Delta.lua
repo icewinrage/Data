@@ -586,7 +586,7 @@ local WorldTab = Window:Tab({Name = "World"}) do
     SaveOriginalLighting()
     
     -- Функция для поиска и скрытия травы
-    local grassKeywords = {"Grass", "Bush", "Foliage", "Vegetation", "Plant", "Leaf", "Tree", "Flower", "Weed", "Stem"}
+    local grassKeywords = {"Grass", "Bush", , "Vegetation", "Plant", "Leaf", "Tree", "Flower", "Weed", "Stem"}
     local hiddenObjects = {}
     
     local function HideGrassObjects(hide)
