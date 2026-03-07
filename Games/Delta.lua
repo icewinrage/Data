@@ -22,7 +22,7 @@ local DoubleTapActive = false
 local RapidFireActive = false
 local ZoomActive = false
 
--- Settings (will be updated via UI)
+-- Settings (all disabled by default, colors set to red/green)
 local Settings = {
     Rage = {
         SilentAim = false,
@@ -58,18 +58,18 @@ local Settings = {
         },
         Box = {
             Enabled = false,
-            Color = {1, 0, 0, 0, false},
+            Color = {1, 0, 0, 0, false},  -- красный
             Thickness = 2
         },
         Tracers = {
             Enabled = false,
-            Color = {1, 0, 0, 0, false},
+            Color = {1, 0, 0, 0, false},  -- красный
             Thickness = 2,
             Mode = "From Bottom"
         },
         Shifter = {
             Enabled = false,
-            Color = {0, 1, 0, 0, false}
+            Color = {1, 0, 0, 0, false}   -- красный
         },
         Health = {
             Bar = false,
@@ -77,36 +77,36 @@ local Settings = {
             ColorMode = "Gradient",
             Position = "Left",
             BarWidth = 2,
-            LowColor = {1, 0, 0, 0, false},
-            HighColor = {0, 1, 0, 0, false}
+            LowColor = {1, 0, 0, 0, false},  -- красный
+            HighColor = {0, 1, 0, 0, false}  -- зелёный
         },
         Name = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false},
+            Color = {1, 0, 0, 0, false},  -- красный
             Size = 14,
             Position = "Top"
         },
         Distance = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false},
+            Color = {1, 0, 0, 0, false},  -- красный
             Mode = "Studs",
             Size = 12,
             Position = "Bottom"
         },
         Weapon = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false},
+            Color = {1, 0, 0, 0, false},  -- красный
             Size = 12
         },
         Skeleton = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false},
+            Color = {1, 0, 0, 0, false},  -- красный
             Thickness = 2
         },
         Chams = {
             Enabled = false,
-            EnemyColor = {0.03, 0.7, 0.5, 0.5, false},
-            AllyColor = {0.3, 0.7, 0.3, 0.5, false},
+            EnemyColor = {1, 0, 0, 0.5, false},  -- красный
+            AllyColor = {0, 1, 0, 0.5, false},    -- зелёный
             FillTransparency = 0.5,
             OutlineTransparency = 0.1,
             TeamCheck = true,
@@ -120,14 +120,14 @@ local Settings = {
             Scale = 1,
             RadarBack = {0.0, 1, 0.04, 0.9, false},
             RadarBorder = {0.67, 0, 0.3, 0.75, false},
-            LocalPlayerDot = {0, 0, 1, 1, false},
-            PlayerDot = {0.6, 1, 1, 1, false},
+            LocalPlayerDot = {1, 0, 0, 1, false},  -- красный
+            PlayerDot = {1, 0, 0, 1, false},       -- красный
             HealthColor = true,
             TeamCheck = true
         },
         ViewTracer = {
             Enabled = false,
-            Color = {0.1, 1, 1, 1, false},
+            Color = {1, 0, 0, 1, false},  -- красный
             Thickness = 1,
             AutoThickness = true,
             Length = 15,
@@ -136,11 +136,11 @@ local Settings = {
         AutoThickness = true,
         TeamCheck = true,
         DeadPlayers = false,
-        DeadColor = {0.5, 0.5, 0.5, 0, false},
-        ItemText = { Enabled = false, Color = {0.1, 1, 1, 0, false}, Distance = 100 },
-        QuestItems = { Enabled = false, Color = {0,1,0,0,false}, Distance = 100 },
-        Vehicles = { Enabled = false, Color = {0,0,1,0,false}, Distance = 100 },
-        DeathHistory = { Enabled = false, Color = {1,0,0,0,false}, Duration = 300 },
+        DeadColor = {0.5, 0.5, 0.5, 0, false}, -- серый для мёртвых
+        ItemText = { Enabled = false, Color = {1, 0, 0, 0, false}, Distance = 100 },  -- красный
+        QuestItems = { Enabled = false, Color = {1, 0, 0, 0, false}, Distance = 100 }, -- красный
+        Vehicles = { Enabled = false, Color = {1, 0, 0, 0, false}, Distance = 100 },   -- красный
+        DeathHistory = { Enabled = false, Color = {1, 0, 0, 0, false}, Duration = 300 },
         Zoom = { Enabled = false, Level = 20 }
     },
     World = {
@@ -153,9 +153,9 @@ local Settings = {
         },
         Inventory = {
             Enabled = false,
-            Money = false,
-            Names = false,
-            MaxItems = 10
+            Money = true,
+            Names = true,
+            MaxItems = 30
         }
     },
     Misc = {
@@ -294,7 +294,7 @@ local GunTab = Window:Tab({Name = "Gun Mods"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: VISUALS (полные настройки)
+-- UI: VISUALS (полные настройки, всё выключено по умолчанию)
 -- ███████████████████████████████████████████████████████
 local VisualsTab = Window:Tab({Name = "Visuals"}) do
     -- General Section
@@ -428,11 +428,6 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
         ChamsSection:Toggle({Name = "Enable Chams", Flag = "Delta/Visuals/Chams/Enabled", Value = false,
             Callback = function(val) 
                 Settings.Visuals.Chams.Enabled = val
-                if val then
-                    LoadChams()
-                else
-                    UnloadChams()
-                end
             end})
         ChamsSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/Visuals/Chams/EnemyColor", Value = Settings.Visuals.Chams.EnemyColor,
             Callback = function(hsv, color) Settings.Visuals.Chams.EnemyColor = hsv end})
@@ -545,10 +540,11 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: WORLD (PROFESSIONAL EDITION + INVENTORY CHECKER)
+-- UI: WORLD (все функции, ничего не включено)
 -- ███████████████████████████████████████████████████████
 local WorldTab = Window:Tab({Name = "World"}) do
-
+    
+    -- Хранилище для оригинальных значений
     local OriginalValues = {
         Lighting = {},
         Terrain = {},
@@ -585,10 +581,18 @@ local WorldTab = Window:Tab({Name = "World"}) do
     -- Вызываем при загрузке
     SaveOriginalLighting()
     
-    -- Функция для поиска и скрытия травы
-    local grassKeywords = {"Grass", "Bush", , "Vegetation", "Plant", "Leaf", "Tree", "Flower", "Weed", "Stem"}
+    -- Функция для поиска и скрытия травы (ИСПРАВЛЕННАЯ, БЕЗ ОШИБОК)
+    local grassKeywords = {"Grass", "Bush", "Foliage", "Vegetation", "Plant", "Leaf", "Tree", "Flower", "Weed", "Stem", "Fills"}
+    local grassMaterials = {
+        Enum.Material.Grass,
+        Enum.Material.LeafyGrass,
+        Enum.Material.Bush,
+        Enum.Material.Fabric,
+        Enum.Material.Carpet,
+        Enum.Material.WoodPlanks
+    }
     local hiddenObjects = {}
-    
+
     local function HideGrassObjects(hide)
         -- Terrain Decoration
         local terrain = Workspace:FindFirstChildOfClass("Terrain")
@@ -605,16 +609,17 @@ local WorldTab = Window:Tab({Name = "World"}) do
             end
         end
         
-        -- Поиск и скрытие объектов по ключевым словам
+        -- Поиск и скрытие объектов по ключевым словам и материалам
         local function SearchAndHide(instance, depth)
             if depth > 10 then return end
             
             for _, child in ipairs(instance:GetChildren()) do
+                -- Проверка по имени
                 for _, keyword in ipairs(grassKeywords) do
                     if child.Name:find(keyword, 1, true) then
                         if hide then
                             if not hiddenObjects[child] then
-                                hiddenObjects[child] = child.Transparency
+                                                hiddenObjects[child] = child.Transparency
                                 child.Transparency = 1
                             end
                         else
@@ -627,22 +632,27 @@ local WorldTab = Window:Tab({Name = "World"}) do
                     end
                 end
                 
-                if child.ClassName == "Part" or child.ClassName == "MeshPart" or child.ClassName == "UnionOperation" then
-                    if child.Material == Enum.Material.Grass or child.Material == Enum.Material.Foliage then
-                        if hide then
-                            if not hiddenObjects[child] then
-                                hiddenObjects[child] = child.Transparency
-                                child.Transparency = 1
+                -- Проверка по материалу (только для частей)
+                if child:IsA("BasePart") then
+                    for _, material in ipairs(grassMaterials) do
+                        if child.Material == material then
+                            if hide then
+                                if not hiddenObjects[child] then
+                                    hiddenObjects[child] = child.Transparency
+                                    child.Transparency = 1
+                                end
+                            else
+                                if hiddenObjects[child] then
+                                    child.Transparency = hiddenObjects[child]
+                                    hiddenObjects[child] = nil
+                                end
                             end
-                        else
-                            if hiddenObjects[child] then
-                                child.Transparency = hiddenObjects[child]
-                                hiddenObjects[child] = nil
-                            end
+                            break
                         end
                     end
                 end
                 
+                -- Рекурсивно ищем в папках и моделях
                 if child:IsA("Folder") or child:IsA("Model") then
                     SearchAndHide(child, depth + 1)
                 end
@@ -700,8 +710,8 @@ local WorldTab = Window:Tab({Name = "World"}) do
     -- Переменные для Inventory Checker
     local InventoryVisible = false
     local InventoryTarget = nil
-    local InventoryLines = {}  -- Drawing объекты
-    local InventoryKeybind = Enum.KeyCode.I -- по умолчанию I
+    local InventoryLines = {}
+    local InventoryKeybind = Enum.KeyCode.I
     
     -- Функция для получения данных инвентаря игрока
     local function GetPlayerInventory(player)
@@ -716,12 +726,10 @@ local WorldTab = Window:Tab({Name = "World"}) do
         local inventory = playerData:FindFirstChild("Inventory")
         if not inventory then return nil end
         
-        -- Собираем все предметы
         local items = {}
         local totalValue = 0
         
         for _, item in ipairs(inventory:GetChildren()) do
-            -- Пытаемся найти стоимость предмета
             local value = item:FindFirstChild("Value") or item:FindFirstChild("Price") or item:FindFirstChild("Cost")
             local itemValue = value and tonumber(value.Value) or 0
             totalValue = totalValue + itemValue
@@ -733,7 +741,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
             })
         end
         
-        -- Сортируем по стоимости (дорогие сверху)
         table.sort(items, function(a, b) return a.Value > b.Value end)
         
         return {
@@ -746,14 +753,12 @@ local WorldTab = Window:Tab({Name = "World"}) do
     
     -- Функция для создания Inventory UI
     local function CreateInventoryUI(data)
-        -- Очищаем старый UI
         for _, obj in pairs(InventoryLines) do
             if obj.Remove then obj:Remove() end
         end
         InventoryLines = {}
         
         if not data or #data.Items == 0 then
-            -- Пустой инвентарь
             local text = Drawing.new("Text")
             text.Size = 18
             text.Center = false
@@ -767,7 +772,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
             return
         end
         
-        -- Заголовок с именем игрока
         local title = Drawing.new("Text")
         title.Size = 20
         title.Center = false
@@ -779,7 +783,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
         title.Visible = true
         table.insert(InventoryLines, title)
         
-        -- Информация о стоимости
         local valueText = Drawing.new("Text")
         valueText.Size = 16
         valueText.Center = false
@@ -791,7 +794,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
         valueText.Visible = true
         table.insert(InventoryLines, valueText)
         
-        -- Количество предметов
         local countText = Drawing.new("Text")
         countText.Size = 14
         countText.Center = false
@@ -803,7 +805,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
         countText.Visible = true
         table.insert(InventoryLines, countText)
         
-        -- Разделительная линия
         local line = Drawing.new("Line")
         line.From = Vector2.new(Camera.ViewportSize.X - 240, 115)
         line.To = Vector2.new(Camera.ViewportSize.X - 40, 115)
@@ -812,14 +813,12 @@ local WorldTab = Window:Tab({Name = "World"}) do
         line.Visible = true
         table.insert(InventoryLines, line)
         
-        -- Список предметов
         local yPos = 130
-        local maxItems = math.min(#data.Items, 30) -- ограничим 30 предметами для читаемости
+        local maxItems = math.min(#data.Items, Settings.World.Inventory.MaxItems or 30)
         
         for i = 1, maxItems do
             local item = data.Items[i]
             
-            -- Название предмета
             local nameText = Drawing.new("Text")
             nameText.Size = 14
             nameText.Center = false
@@ -831,7 +830,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
             nameText.Visible = true
             table.insert(InventoryLines, nameText)
             
-            -- Стоимость (если есть)
             if item.Value > 0 then
                 local valueItemText = Drawing.new("Text")
                 valueItemText.Size = 12
@@ -848,8 +846,7 @@ local WorldTab = Window:Tab({Name = "World"}) do
             yPos = yPos + 18
         end
         
-        -- Если предметов больше 30, показываем счётчик
-        if #data.Items > 30 then
+        if #data.Items > maxItems then
             local moreText = Drawing.new("Text")
             moreText.Size = 12
             moreText.Center = false
@@ -857,14 +854,14 @@ local WorldTab = Window:Tab({Name = "World"}) do
             moreText.Font = 2
             moreText.Color = Color3.new(1, 1, 0)
             moreText.Position = Vector2.new(Camera.ViewportSize.X - 220, yPos)
-            moreText.Text = string.format("... and %d more", #data.Items - 30)
+            moreText.Text = string.format("... and %d more", #data.Items - maxItems)
             moreText.Visible = true
             table.insert(InventoryLines, moreText)
+            yPos = yPos + 18
         end
         
-        -- Рамка вокруг всего инвентаря
         local frame = Drawing.new("Square")
-        frame.Size = Vector2.new(220, yPos + 20 - 50)
+        frame.Size = Vector2.new(220, yPos + 10 - 50)
         frame.Position = Vector2.new(Camera.ViewportSize.X - 240, 40)
         frame.Color = Color3.new(0, 0, 0)
         frame.Filled = true
@@ -872,32 +869,14 @@ local WorldTab = Window:Tab({Name = "World"}) do
         frame.Visible = true
         table.insert(InventoryLines, frame)
         
-        -- Обводка рамки
         local outline = Drawing.new("Square")
-        outline.Size = Vector2.new(220, yPos + 20 - 50)
+        outline.Size = Vector2.new(220, yPos + 10 - 50)
         outline.Position = Vector2.new(Camera.ViewportSize.X - 240, 40)
         outline.Color = Color3.new(1, 1, 1)
         outline.Filled = false
         outline.Thickness = 2
         outline.Visible = true
         table.insert(InventoryLines, outline)
-    end
-    
-    -- Функция для обновления позиции инвентаря (при изменении размера экрана)
-    local function UpdateInventoryPosition()
-        if not InventoryVisible or not InventoryTarget then
-            -- Скрываем весь инвентарь
-            for _, obj in pairs(InventoryLines) do
-                obj.Visible = false
-            end
-            return
-        end
-        
-        -- Пересоздаём UI с новыми координатами
-        local data = GetPlayerInventory(InventoryTarget)
-        if data then
-            CreateInventoryUI(data)
-        end
     end
     
     -- Функция для поиска игрока под прицелом
@@ -912,7 +891,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
         local hit = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
         
         if hit and hit.Instance then
-            -- Ищем игрока, которому принадлежит эта часть
             for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer then
                     local char = player.Character
@@ -931,7 +909,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
     -- Функция для переключения инвентаря
     local function ToggleInventory()
         if InventoryVisible then
-            -- Закрываем инвентарь
             InventoryVisible = false
             InventoryTarget = nil
             for _, obj in pairs(InventoryLines) do
@@ -939,7 +916,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
             end
             InventoryLines = {}
         else
-            -- Ищем игрока под прицелом
             local target = GetTargetPlayer()
             if target then
                 local data = GetPlayerInventory(target)
@@ -948,7 +924,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
                     InventoryVisible = true
                     CreateInventoryUI(data)
                 else
-                    -- Нет данных инвентаря
                     local text = Drawing.new("Text")
                     text.Size = 18
                     text.Center = true
@@ -965,7 +940,6 @@ local WorldTab = Window:Tab({Name = "World"}) do
                     end)
                 end
             else
-                -- Нет игрока под прицелом
                 local text = Drawing.new("Text")
                 text.Size = 18
                 text.Center = true
@@ -984,7 +958,7 @@ local WorldTab = Window:Tab({Name = "World"}) do
         end
     end
     
-    -- Подключаем обработку клавиш для инвентаря
+    -- Подключаем обработку клавиш
     local function SetupInventoryKeybind(key)
         InventoryKeybind = key
     end
@@ -995,19 +969,15 @@ local WorldTab = Window:Tab({Name = "World"}) do
         end
     end)
     
-    -- Обновляем позицию при изменении размера окна
     RunService.Heartbeat:Connect(function()
         if InventoryVisible and InventoryTarget then
-            -- Проверяем, жив ли ещё игрок
             if not InventoryTarget.Character or not InventoryTarget.Character:FindFirstChildOfClass("Humanoid") or InventoryTarget.Character.Humanoid.Health <= 0 then
-                ToggleInventory() -- закрываем, если игрок мёртв
+                ToggleInventory()
             end
         end
     end)
     
-    -- ███████████████████████████████████████████████████████
-    -- ENVIRONMENT SECTION
-    -- ███████████████████████████████████████████████████████
+    -- Environment Section
     local EnvSection = WorldTab:Section({Name = "Environment", Side = "Left"}) do
         
         EnvSection:Toggle({
@@ -1043,7 +1013,7 @@ local WorldTab = Window:Tab({Name = "World"}) do
         EnvSection:Colorpicker({
             Name = "Change Ambient",
             Flag = "Delta/World/AmbientColor",
-            Value = Settings.World.AmbientColor or {0.5, 0.5, 0.5, 0, false},
+            Value = Settings.World.AmbientColor,
             Callback = function(hsv, color)
                 Settings.World.AmbientColor = hsv
                 SetAmbientColor(color)
@@ -1052,9 +1022,7 @@ local WorldTab = Window:Tab({Name = "World"}) do
         })
     end
 
-    -- ███████████████████████████████████████████████████████
-    -- SKYBOX SECTION
-    -- ███████████████████████████████████████████████████████
+    -- SkyBox Section
     local SkySection = WorldTab:Section({Name = "Sky Box", Side = "Left"}) do
         
         local sky = nil
@@ -1114,9 +1082,7 @@ local WorldTab = Window:Tab({Name = "World"}) do
         })
     end
 
-    -- ███████████████████████████████████████████████████████
-    -- INVENTORY CHECKER SECTION
-    -- ███████████████████████████████████████████████████████
+    -- Inventory Checker Section
     local InvSection = WorldTab:Section({Name = "Inventory Checker", Side = "Right"}) do
         
         InvSection:Toggle({
@@ -1126,13 +1092,12 @@ local WorldTab = Window:Tab({Name = "World"}) do
             Callback = function(val)
                 Settings.World.Inventory.Enabled = val
                 if not val and InventoryVisible then
-                    ToggleInventory() -- закрываем если выключили
+                    ToggleInventory()
                 end
                 print("[Inventory] Enabled:", val)
             end
         })
         
-        -- Настройка клавиши
         local keybindButton = InvSection:Toggle({
             Name = "Inventory Keybind",
             Flag = "Delta/World/Inventory/KeybindToggle",
@@ -1144,19 +1109,13 @@ local WorldTab = Window:Tab({Name = "World"}) do
             Value = "I",
             Mouse = false,
             Callback = function(key, state)
-                if state then
-                    -- Когда клавиша нажата (в режиме настройки)
-                else
-                    -- Когда отпущена - сохраняем новую клавишу
-                    if key ~= "Unknown" then
-                        SetupInventoryKeybind(key)
-                        print("[Inventory] Keybind set to:", key)
-                    end
+                if not state and key ~= "Unknown" then
+                    SetupInventoryKeybind(key)
+                    print("[Inventory] Keybind set to:", key)
                 end
             end
         })
         
-        -- Опции отображения
         InvSection:Toggle({Name = "Show Money", Flag = "Delta/World/Inventory/Money", Value = true,
             Callback = function(val) 
                 Settings.World.Inventory.Money = val
@@ -1279,51 +1238,6 @@ end
 local function IsEnemy(player)
     return player ~= LocalPlayer
 end
-
--- ███████████████████████████████████████████████████████
--- CHAMS SYSTEM
--- ███████████████████████████████████████████████████████
-local Tag = "DataHubChams"
-local ChamsCons = {}
-
-local function PaintChams(Chr, Plr)
-    if not Chr or Chr:FindFirstChild(Tag) then return end
-    local H = Instance.new("Highlight")
-    local IsEnemy = (Settings.Visuals.Chams.TeamCheck and Plr.Team ~= LocalPlayer.Team) or not Settings.Visuals.Chams.TeamCheck
-    
-    H.Name = Tag
-    H.FillColor = IsEnemy and HSVToColor(Settings.Visuals.Chams.EnemyColor) or HSVToColor(Settings.Visuals.Chams.AllyColor)
-    H.OutlineColor = Color3.fromRGB(255, 255, 255)
-    H.FillTransparency = Settings.Visuals.Chams.FillTransparency
-    H.OutlineTransparency = Settings.Visuals.Chams.OutlineTransparency
-    H.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    H.Adornee = Chr
-    H.Parent = Chr
-end
-
-local function HookChams(Plr)
-    if Plr == LocalPlayer then return end
-    ChamsCons[Plr] = Plr.CharacterAdded:Connect(function(c) task.wait(0.1); PaintChams(c, Plr) end)
-    if Plr.Character then PaintChams(Plr.Character, Plr) end
-end
-
-local function LoadChams()
-    if _G.UnloadChams then _G.UnloadChams() end
-    for _, v in next, Players:GetPlayers() do HookChams(v) end
-    ChamsCons.Add = Players.PlayerAdded:Connect(HookChams)
-end
-
-function UnloadChams()
-    if ChamsCons.Add then ChamsCons.Add:Disconnect() end
-    for _, c in next, ChamsCons do if c.Disconnect then c:Disconnect() end end
-    for _, v in next, Players:GetPlayers() do 
-        if v.Character and v.Character:FindFirstChild(Tag) then 
-            v.Character[Tag]:Destroy() 
-        end
-    end
-end
-
-_G.UnloadChams = UnloadChams
 
 -- ███████████████████████████████████████████████████████
 -- ESP HELPER FUNCTIONS
