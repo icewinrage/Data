@@ -154,10 +154,8 @@ local Settings = {
         Inventory = {
             Enabled = false,
             Money = false,
-            Name = false,
-            Icons = false,
-            Moduls = false,
-            ShowAmount = 10
+            Names = false,
+            MaxItems = 10
         }
     },
     Misc = {
@@ -547,45 +545,645 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
 end
 
 -- ███████████████████████████████████████████████████████
--- UI: WORLD
+-- UI: WORLD (PROFESSIONAL EDITION + INVENTORY CHECKER)
 -- ███████████████████████████████████████████████████████
 local WorldTab = Window:Tab({Name = "World"}) do
+
+    local OriginalValues = {
+        Lighting = {},
+        Terrain = {},
+        HiddenObjects = {}
+    }
+    
+    -- Функция для сохранения оригинальных настроек освещения
+    local function SaveOriginalLighting()
+        OriginalValues.Lighting = {
+            Ambient = Lighting.Ambient,
+            Brightness = Lighting.Brightness,
+            ClockTime = Lighting.ClockTime,
+            ColorShift_Bottom = Lighting.ColorShift_Bottom,
+            ColorShift_Top = Lighting.ColorShift_Top,
+            FogColor = Lighting.FogColor,
+            FogEnd = Lighting.FogEnd,
+            FogStart = Lighting.FogStart,
+            GlobalShadows = Lighting.GlobalShadows,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            ShadowSoftness = Lighting.ShadowSoftness,
+            GeographicLatitude = Lighting.GeographicLatitude,
+            EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+            EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale
+        }
+    end
+    
+    -- Функция для восстановления оригинального освещения
+    local function RestoreOriginalLighting()
+        for prop, value in pairs(OriginalValues.Lighting) do
+            Lighting[prop] = value
+        end
+    end
+    
+    -- Вызываем при загрузке
+    SaveOriginalLighting()
+    
+    -- Функция для поиска и скрытия травы
+    local grassKeywords = {"Grass", "Bush", "Foliage", "Vegetation", "Plant", "Leaf", "Tree", "Flower", "Weed", "Stem"}
+    local hiddenObjects = {}
+    
+    local function HideGrassObjects(hide)
+        -- Terrain Decoration
+        local terrain = Workspace:FindFirstChildOfClass("Terrain")
+        if terrain then
+            if hide then
+                if OriginalValues.Terrain.Decoration == nil then
+                    OriginalValues.Terrain.Decoration = terrain.Decoration
+                end
+                terrain.Decoration = false
+            else
+                if OriginalValues.Terrain.Decoration ~= nil then
+                    terrain.Decoration = OriginalValues.Terrain.Decoration
+                end
+            end
+        end
+        
+        -- Поиск и скрытие объектов по ключевым словам
+        local function SearchAndHide(instance, depth)
+            if depth > 10 then return end
+            
+            for _, child in ipairs(instance:GetChildren()) do
+                for _, keyword in ipairs(grassKeywords) do
+                    if child.Name:find(keyword, 1, true) then
+                        if hide then
+                            if not hiddenObjects[child] then
+                                hiddenObjects[child] = child.Transparency
+                                child.Transparency = 1
+                            end
+                        else
+                            if hiddenObjects[child] then
+                                child.Transparency = hiddenObjects[child]
+                                hiddenObjects[child] = nil
+                            end
+                        end
+                        break
+                    end
+                end
+                
+                if child.ClassName == "Part" or child.ClassName == "MeshPart" or child.ClassName == "UnionOperation" then
+                    if child.Material == Enum.Material.Grass or child.Material == Enum.Material.Foliage then
+                        if hide then
+                            if not hiddenObjects[child] then
+                                hiddenObjects[child] = child.Transparency
+                                child.Transparency = 1
+                            end
+                        else
+                            if hiddenObjects[child] then
+                                child.Transparency = hiddenObjects[child]
+                                hiddenObjects[child] = nil
+                            end
+                        end
+                    end
+                end
+                
+                if child:IsA("Folder") or child:IsA("Model") then
+                    SearchAndHide(child, depth + 1)
+                end
+            end
+        end
+        
+        SearchAndHide(Workspace, 0)
+    end
+    
+    -- Функция для Full Bright
+    local function SetFullBright(enabled)
+        if enabled then
+            if next(OriginalValues.Lighting) == nil then
+                SaveOriginalLighting()
+            end
+            
+            Lighting.Ambient = Color3.new(1, 1, 1)
+            Lighting.Brightness = 3
+            Lighting.ClockTime = 14
+            Lighting.ColorShift_Bottom = Color3.new(1, 1, 1)
+            Lighting.ColorShift_Top = Color3.new(1, 1, 1)
+            Lighting.FogEnd = 100000
+            Lighting.FogStart = 0
+            Lighting.GlobalShadows = false
+            Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+            Lighting.ShadowSoftness = 0
+        else
+            RestoreOriginalLighting()
+        end
+    end
+    
+    -- Функция для Remove Shadows
+    local function SetRemoveShadows(enabled)
+        if enabled then
+            Lighting.GlobalShadows = false
+            Lighting.ShadowSoftness = 0
+        else
+            Lighting.GlobalShadows = OriginalValues.Lighting.GlobalShadows
+            Lighting.ShadowSoftness = OriginalValues.Lighting.ShadowSoftness
+        end
+    end
+    
+    -- Функция для Change Ambient
+    local function SetAmbientColor(color)
+        Lighting.Ambient = color
+        Lighting.OutdoorAmbient = color
+        Lighting.ColorShift_Bottom = color
+        Lighting.ColorShift_Top = color
+    end
+    
+    -- ███████████████████████████████████████████████████████
+    -- INVENTORY CHECKER SYSTEM
+    -- ███████████████████████████████████████████████████████
+    
+    -- Переменные для Inventory Checker
+    local InventoryVisible = false
+    local InventoryTarget = nil
+    local InventoryLines = {}  -- Drawing объекты
+    local InventoryKeybind = Enum.KeyCode.I -- по умолчанию I
+    
+    -- Функция для получения данных инвентаря игрока
+    local function GetPlayerInventory(player)
+        if not player then return nil end
+        
+        local playersFolder = ReplicatedStorage:FindFirstChild("Players")
+        if not playersFolder then return nil end
+        
+        local playerData = playersFolder:FindFirstChild(player.Name)
+        if not playerData then return nil end
+        
+        local inventory = playerData:FindFirstChild("Inventory")
+        if not inventory then return nil end
+        
+        -- Собираем все предметы
+        local items = {}
+        local totalValue = 0
+        
+        for _, item in ipairs(inventory:GetChildren()) do
+            -- Пытаемся найти стоимость предмета
+            local value = item:FindFirstChild("Value") or item:FindFirstChild("Price") or item:FindFirstChild("Cost")
+            local itemValue = value and tonumber(value.Value) or 0
+            totalValue = totalValue + itemValue
+            
+            table.insert(items, {
+                Name = item.Name,
+                Value = itemValue,
+                Instance = item
+            })
+        end
+        
+        -- Сортируем по стоимости (дорогие сверху)
+        table.sort(items, function(a, b) return a.Value > b.Value end)
+        
+        return {
+            Player = player,
+            Items = items,
+            TotalValue = totalValue,
+            ItemCount = #items
+        }
+    end
+    
+    -- Функция для создания Inventory UI
+    local function CreateInventoryUI(data)
+        -- Очищаем старый UI
+        for _, obj in pairs(InventoryLines) do
+            if obj.Remove then obj:Remove() end
+        end
+        InventoryLines = {}
+        
+        if not data or #data.Items == 0 then
+            -- Пустой инвентарь
+            local text = Drawing.new("Text")
+            text.Size = 18
+            text.Center = false
+            text.Outline = true
+            text.Font = 2
+            text.Color = Color3.new(1, 1, 1)
+            text.Position = Vector2.new(Camera.ViewportSize.X - 220, 100)
+            text.Text = "Empty Inventory"
+            text.Visible = true
+            table.insert(InventoryLines, text)
+            return
+        end
+        
+        -- Заголовок с именем игрока
+        local title = Drawing.new("Text")
+        title.Size = 20
+        title.Center = false
+        title.Outline = true
+        title.Font = 2
+        title.Color = Color3.new(1, 1, 0)
+        title.Position = Vector2.new(Camera.ViewportSize.X - 220, 50)
+        title.Text = data.Player.Name .. "'s Inventory"
+        title.Visible = true
+        table.insert(InventoryLines, title)
+        
+        -- Информация о стоимости
+        local valueText = Drawing.new("Text")
+        valueText.Size = 16
+        valueText.Center = false
+        valueText.Outline = true
+        valueText.Font = 2
+        valueText.Color = Color3.new(0, 1, 0)
+        valueText.Position = Vector2.new(Camera.ViewportSize.X - 220, 75)
+        valueText.Text = string.format("Total Value: $%d", data.TotalValue)
+        valueText.Visible = true
+        table.insert(InventoryLines, valueText)
+        
+        -- Количество предметов
+        local countText = Drawing.new("Text")
+        countText.Size = 14
+        countText.Center = false
+        countText.Outline = true
+        countText.Font = 2
+        countText.Color = Color3.new(1, 1, 1)
+        countText.Position = Vector2.new(Camera.ViewportSize.X - 220, 95)
+        countText.Text = string.format("Items: %d", data.ItemCount)
+        countText.Visible = true
+        table.insert(InventoryLines, countText)
+        
+        -- Разделительная линия
+        local line = Drawing.new("Line")
+        line.From = Vector2.new(Camera.ViewportSize.X - 240, 115)
+        line.To = Vector2.new(Camera.ViewportSize.X - 40, 115)
+        line.Color = Color3.new(1, 1, 1)
+        line.Thickness = 2
+        line.Visible = true
+        table.insert(InventoryLines, line)
+        
+        -- Список предметов
+        local yPos = 130
+        local maxItems = math.min(#data.Items, 30) -- ограничим 30 предметами для читаемости
+        
+        for i = 1, maxItems do
+            local item = data.Items[i]
+            
+            -- Название предмета
+            local nameText = Drawing.new("Text")
+            nameText.Size = 14
+            nameText.Center = false
+            nameText.Outline = true
+            nameText.Font = 2
+            nameText.Color = Color3.new(1, 1, 1)
+            nameText.Position = Vector2.new(Camera.ViewportSize.X - 220, yPos)
+            nameText.Text = item.Name
+            nameText.Visible = true
+            table.insert(InventoryLines, nameText)
+            
+            -- Стоимость (если есть)
+            if item.Value > 0 then
+                local valueItemText = Drawing.new("Text")
+                valueItemText.Size = 12
+                valueItemText.Center = false
+                valueItemText.Outline = true
+                valueItemText.Font = 2
+                valueItemText.Color = Color3.new(0, 1, 0)
+                valueItemText.Position = Vector2.new(Camera.ViewportSize.X - 80, yPos)
+                valueItemText.Text = string.format("$%d", item.Value)
+                valueItemText.Visible = true
+                table.insert(InventoryLines, valueItemText)
+            end
+            
+            yPos = yPos + 18
+        end
+        
+        -- Если предметов больше 30, показываем счётчик
+        if #data.Items > 30 then
+            local moreText = Drawing.new("Text")
+            moreText.Size = 12
+            moreText.Center = false
+            moreText.Outline = true
+            moreText.Font = 2
+            moreText.Color = Color3.new(1, 1, 0)
+            moreText.Position = Vector2.new(Camera.ViewportSize.X - 220, yPos)
+            moreText.Text = string.format("... and %d more", #data.Items - 30)
+            moreText.Visible = true
+            table.insert(InventoryLines, moreText)
+        end
+        
+        -- Рамка вокруг всего инвентаря
+        local frame = Drawing.new("Square")
+        frame.Size = Vector2.new(220, yPos + 20 - 50)
+        frame.Position = Vector2.new(Camera.ViewportSize.X - 240, 40)
+        frame.Color = Color3.new(0, 0, 0)
+        frame.Filled = true
+        frame.Transparency = 0.5
+        frame.Visible = true
+        table.insert(InventoryLines, frame)
+        
+        -- Обводка рамки
+        local outline = Drawing.new("Square")
+        outline.Size = Vector2.new(220, yPos + 20 - 50)
+        outline.Position = Vector2.new(Camera.ViewportSize.X - 240, 40)
+        outline.Color = Color3.new(1, 1, 1)
+        outline.Filled = false
+        outline.Thickness = 2
+        outline.Visible = true
+        table.insert(InventoryLines, outline)
+    end
+    
+    -- Функция для обновления позиции инвентаря (при изменении размера экрана)
+    local function UpdateInventoryPosition()
+        if not InventoryVisible or not InventoryTarget then
+            -- Скрываем весь инвентарь
+            for _, obj in pairs(InventoryLines) do
+                obj.Visible = false
+            end
+            return
+        end
+        
+        -- Пересоздаём UI с новыми координатами
+        local data = GetPlayerInventory(InventoryTarget)
+        if data then
+            CreateInventoryUI(data)
+        end
+    end
+    
+    -- Функция для поиска игрока под прицелом
+    local function GetTargetPlayer()
+        local mousePos = UserInputService:GetMouseLocation()
+        local ray = Camera:ScreenPointToRay(mousePos.X, mousePos.Y)
+        
+        local params = RaycastParams.new()
+        params.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        
+        local hit = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+        
+        if hit and hit.Instance then
+            -- Ищем игрока, которому принадлежит эта часть
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer then
+                    local char = player.Character
+                    if char and char:FindFirstChild("Humanoid") and char:FindFirstChild("HumanoidRootPart") then
+                        if hit.Instance:IsDescendantOf(char) then
+                            return player
+                        end
+                    end
+                end
+            end
+        end
+        
+        return nil
+    end
+    
+    -- Функция для переключения инвентаря
+    local function ToggleInventory()
+        if InventoryVisible then
+            -- Закрываем инвентарь
+            InventoryVisible = false
+            InventoryTarget = nil
+            for _, obj in pairs(InventoryLines) do
+                if obj.Remove then obj:Remove() end
+            end
+            InventoryLines = {}
+        else
+            -- Ищем игрока под прицелом
+            local target = GetTargetPlayer()
+            if target then
+                local data = GetPlayerInventory(target)
+                if data then
+                    InventoryTarget = target
+                    InventoryVisible = true
+                    CreateInventoryUI(data)
+                else
+                    -- Нет данных инвентаря
+                    local text = Drawing.new("Text")
+                    text.Size = 18
+                    text.Center = true
+                    text.Outline = true
+                    text.Font = 2
+                    text.Color = Color3.new(1, 0, 0)
+                    text.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+                    text.Text = "No inventory data"
+                    text.Visible = true
+                    table.insert(InventoryLines, text)
+                    
+                    task.delay(2, function()
+                        if text then text:Remove() end
+                    end)
+                end
+            else
+                -- Нет игрока под прицелом
+                local text = Drawing.new("Text")
+                text.Size = 18
+                text.Center = true
+                text.Outline = true
+                text.Font = 2
+                text.Color = Color3.new(1, 0, 0)
+                text.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+                text.Text = "No player targeted"
+                text.Visible = true
+                table.insert(InventoryLines, text)
+                
+                task.delay(2, function()
+                    if text then text:Remove() end
+                end)
+            end
+        end
+    end
+    
+    -- Подключаем обработку клавиш для инвентаря
+    local function SetupInventoryKeybind(key)
+        InventoryKeybind = key
+    end
+    
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == InventoryKeybind then
+            ToggleInventory()
+        end
+    end)
+    
+    -- Обновляем позицию при изменении размера окна
+    RunService.Heartbeat:Connect(function()
+        if InventoryVisible and InventoryTarget then
+            -- Проверяем, жив ли ещё игрок
+            if not InventoryTarget.Character or not InventoryTarget.Character:FindFirstChildOfClass("Humanoid") or InventoryTarget.Character.Humanoid.Health <= 0 then
+                ToggleInventory() -- закрываем, если игрок мёртв
+            end
+        end
+    end)
+    
+    -- ███████████████████████████████████████████████████████
+    -- ENVIRONMENT SECTION
+    -- ███████████████████████████████████████████████████████
     local EnvSection = WorldTab:Section({Name = "Environment", Side = "Left"}) do
-        EnvSection:Toggle({Name = "Full Bright", Flag = "Delta/World/FullBright", Value = false,
-            Callback = function(val) Settings.World.FullBright = val end})
-        EnvSection:Toggle({Name = "Remove Grass", Flag = "Delta/World/RemoveGrass", Value = false,
-            Callback = function(val) Settings.World.RemoveGrass = val end})
-        EnvSection:Toggle({Name = "Remove Shadows", Flag = "Delta/World/RemoveShadows", Value = false,
-            Callback = function(val) Settings.World.RemoveShadows = val end})
-        EnvSection:Colorpicker({Name = "Change Ambient", Flag = "Delta/World/AmbientColor",
-            Value = Settings.World.AmbientColor,
-            Callback = function(val) Settings.World.AmbientColor = val end})
+        
+        EnvSection:Toggle({
+            Name = "Full Bright",
+            Flag = "Delta/World/FullBright",
+            Value = false,
+            Callback = function(val)
+                SetFullBright(val)
+                print("[World] Full Bright:", val and "ON" or "OFF")
+            end
+        })
+        
+        EnvSection:Toggle({
+            Name = "Remove Grass",
+            Flag = "Delta/World/RemoveGrass",
+            Value = false,
+            Callback = function(val)
+                HideGrassObjects(val)
+                print("[World] Remove Grass:", val and "ON" or "OFF")
+            end
+        })
+        
+        EnvSection:Toggle({
+            Name = "Remove Shadows",
+            Flag = "Delta/World/RemoveShadows",
+            Value = false,
+            Callback = function(val)
+                SetRemoveShadows(val)
+                print("[World] Remove Shadows:", val and "ON" or "OFF")
+            end
+        })
+        
+        EnvSection:Colorpicker({
+            Name = "Change Ambient",
+            Flag = "Delta/World/AmbientColor",
+            Value = Settings.World.AmbientColor or {0.5, 0.5, 0.5, 0, false},
+            Callback = function(hsv, color)
+                Settings.World.AmbientColor = hsv
+                SetAmbientColor(color)
+                print("[World] Ambient color set to:", color)
+            end
+        })
     end
 
+    -- ███████████████████████████████████████████████████████
+    -- SKYBOX SECTION
+    -- ███████████████████████████████████████████████████████
     local SkySection = WorldTab:Section({Name = "Sky Box", Side = "Left"}) do
-        SkySection:Toggle({Name = "Moon", Flag = "Delta/World/SkyBox/Moon", Value = false,
-            Callback = function(val) Settings.World.SkyBox.Moon = val end})
+        
+        local sky = nil
+        local originalSky = nil
+        
+        local function SetupSky()
+            if not sky then
+                sky = Lighting:FindFirstChildOfClass("Sky")
+                if not sky then
+                    sky = Instance.new("Sky")
+                    sky.Parent = Lighting
+                end
+                if not originalSky then
+                    originalSky = {
+                        SkyboxBk = sky.SkyboxBk,
+                        SkyboxDn = sky.SkyboxDn,
+                        SkyboxFt = sky.SkyboxFt,
+                        SkyboxLf = sky.SkyboxLf,
+                        SkyboxRt = sky.SkyboxRt,
+                        SkyboxUp = sky.SkyboxUp,
+                        SunAngularSize = sky.SunAngularSize,
+                        MoonAngularSize = sky.MoonAngularSize
+                    }
+                end
+            end
+            return sky
+        end
+        
+        SkySection:Toggle({
+            Name = "Moon",
+            Flag = "Delta/World/SkyBox/Moon",
+            Value = false,
+            Callback = function(val)
+                local sky = SetupSky()
+                if val then
+                    sky.MoonTextureId = "rbxassetid://16031569"
+                    sky.MoonAngularSize = 15
+                    sky.StarCount = 1000
+                else
+                    sky.MoonTextureId = ""
+                    sky.StarCount = 3000
+                end
+                print("[World] Moon:", val and "ON" or "OFF")
+            end
+        })
+        
+        SkySection:Button({
+            Name = "Reset Sky",
+            Callback = function()
+                if sky and originalSky then
+                    for prop, value in pairs(originalSky) do
+                        sky[prop] = value
+                    end
+                end
+                print("[World] Sky reset to default")
+            end
+        })
     end
 
+    -- ███████████████████████████████████████████████████████
+    -- INVENTORY CHECKER SECTION
+    -- ███████████████████████████████████████████████████████
     local InvSection = WorldTab:Section({Name = "Inventory Checker", Side = "Right"}) do
+        
         InvSection:Toggle({
             Name = "Enable Inventory",
             Flag = "Delta/World/Inventory/Enabled",
             Value = false,
-            Callback = function(val) Settings.World.Inventory.Enabled = val end
-        }):Keybind({Flag = "Delta/World/Inventory/Keybind", Mouse = true})
-
-        InvSection:Toggle({Name = "Money", Flag = "Delta/World/Inventory/Money", Value = false,
-            Callback = function(val) Settings.World.Inventory.Money = val end})
-        InvSection:Toggle({Name = "Name", Flag = "Delta/World/Inventory/Name", Value = false,
-            Callback = function(val) Settings.World.Inventory.Name = val end})
-        InvSection:Toggle({Name = "Icons", Flag = "Delta/World/Inventory/Icons", Value = false,
-            Callback = function(val) Settings.World.Inventory.Icons = val end})
-        InvSection:Toggle({Name = "Moduls", Flag = "Delta/World/Inventory/Moduls", Value = false,
-            Callback = function(val) Settings.World.Inventory.Moduls = val end})
-        InvSection:Slider({Name = "Show Amount", Flag = "Delta/World/Inventory/ShowAmount",
-            Min = 0, Max = 50, Value = 10,
-            Callback = function(val) Settings.World.Inventory.ShowAmount = val end})
+            Callback = function(val)
+                Settings.World.Inventory.Enabled = val
+                if not val and InventoryVisible then
+                    ToggleInventory() -- закрываем если выключили
+                end
+                print("[Inventory] Enabled:", val)
+            end
+        })
+        
+        -- Настройка клавиши
+        local keybindButton = InvSection:Toggle({
+            Name = "Inventory Keybind",
+            Flag = "Delta/World/Inventory/KeybindToggle",
+            Value = false
+        })
+        
+        keybindButton:Keybind({
+            Flag = "Delta/World/Inventory/Keybind",
+            Value = "I",
+            Mouse = false,
+            Callback = function(key, state)
+                if state then
+                    -- Когда клавиша нажата (в режиме настройки)
+                else
+                    -- Когда отпущена - сохраняем новую клавишу
+                    if key ~= "Unknown" then
+                        SetupInventoryKeybind(key)
+                        print("[Inventory] Keybind set to:", key)
+                    end
+                end
+            end
+        })
+        
+        -- Опции отображения
+        InvSection:Toggle({Name = "Show Money", Flag = "Delta/World/Inventory/Money", Value = true,
+            Callback = function(val) 
+                Settings.World.Inventory.Money = val
+                if InventoryVisible and InventoryTarget then
+                    local data = GetPlayerInventory(InventoryTarget)
+                    if data then CreateInventoryUI(data) end
+                end
+            end})
+        
+        InvSection:Toggle({Name = "Show Names", Flag = "Delta/World/Inventory/Names", Value = true,
+            Callback = function(val) 
+                Settings.World.Inventory.Names = val
+                if InventoryVisible and InventoryTarget then
+                    local data = GetPlayerInventory(InventoryTarget)
+                    if data then CreateInventoryUI(data) end
+                end
+            end})
+        
+        InvSection:Slider({Name = "Max Items", Flag = "Delta/World/Inventory/MaxItems",
+            Min = 10, Max = 100, Value = 30,
+            Callback = function(val) 
+                Settings.World.Inventory.MaxItems = val
+                if InventoryVisible and InventoryTarget then
+                    local data = GetPlayerInventory(InventoryTarget)
+                    if data then CreateInventoryUI(data) end
+                end
+            end})
     end
 end
 
