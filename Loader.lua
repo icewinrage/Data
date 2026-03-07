@@ -1,4 +1,6 @@
--- Data Hub Loader (fixed version)
+-- Data Hub Loader (Full Version with ArrowCursor)
+-- Author: icewinrage
+-- Description: Universal loader for Data Hub scripts
 
 repeat task.wait() until game:IsLoaded()
 repeat task.wait() until game.GameId ~= 0
@@ -15,7 +17,11 @@ if getgenv().DataHub and getgenv().DataHub.Loaded then
     return
 end
 
+-- Получаем сервисы
 local PlayerService = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+
 repeat task.wait() until PlayerService.LocalPlayer
 local LocalPlayer = PlayerService.LocalPlayer
 
@@ -27,43 +33,62 @@ end
 
 -- Параметры
 local Branch, NotificationTime, IsLocal = ...
+Branch = Branch or "main"
 NotificationTime = NotificationTime or 30
 IsLocal = IsLocal or false
 
 -- Базовая ссылка
-local BASE_URL = "https://raw.githubusercontent.com/icewinrage/Data/main/"
+local BASE_URL = "https://raw.githubusercontent.com/icewinrage/Data/" .. Branch .. "/"
 
--- Безопасный HttpGet
-local function SafeHttpGet(url)
-    local success, result = pcall(function()
-        return game:HttpGet(url)
-    end)
-
-    if not success or not result or result == "" then
-        error("Failed to load: " .. url)
+-- Функция для безопасного получения файла
+local function GetFile(path)
+    if IsLocal then
+        -- Локальное чтение (для тестирования)
+        return readfile("DataHub/" .. path)
+    else
+        -- Загрузка с GitHub
+        local url = BASE_URL .. path
+        local success, result = pcall(function()
+            return game:HttpGet(url)
+        end)
+        if not success or not result or result == "" then
+            error("Failed to load: " .. url)
+        end
+        return result
     end
-
-    return result
 end
 
--- Функция загрузки скриптов
-local function LoadFromUrl(url, name)
-    local content = SafeHttpGet(url)
-
+-- Функция загрузки и выполнения скрипта
+local function LoadScript(path, name)
+    local content = GetFile(path)
+    if not content or content == "" then
+        error("Failed to load script: " .. path)
+    end
+    
     local fn, err = loadstring(content, name)
     if not fn then
         error("Compilation error in " .. name .. ": " .. tostring(err))
     end
-
+    
     local success, result = pcall(fn)
     if not success then
         error("Runtime error in " .. name .. ": " .. tostring(result))
     end
-
+    
     return result
 end
 
--- Глобальная таблица
+-- Функция для загрузки бинарных файлов (изображения)
+local function GetBinaryFile(path)
+    if IsLocal then
+        return readfile("DataHub/" .. path)
+    else
+        local url = BASE_URL .. path
+        return game:HttpGet(url)
+    end
+end
+
+-- Создаём глобальную таблицу
 getgenv().DataHub = {
     Utilities = {},
     Games = {
@@ -79,27 +104,53 @@ getgenv().DataHub = {
         ["1793802713"] = { Name = "Deadline", Script = "DL" },
         ["2862098693"] = { Name = "Project Delta", Script = "Delta" }
     },
-    Loaded = false
+    Loaded = false,
+    Source = BASE_URL,
+    Branch = Branch,
+    NotificationTime = NotificationTime,
+    IsLocal = IsLocal
 }
 
 local DataHub = getgenv().DataHub
 
--- Загружаем утилиты
-DataHub.Utilities = LoadFromUrl(BASE_URL .. "Utilities/Main.lua", "Main")
-DataHub.Utilities.UI = LoadFromUrl(BASE_URL .. "Utilities/UI.lua", "UI")
-DataHub.Utilities.Physics = LoadFromUrl(BASE_URL .. "Utilities/Physics.lua", "Physics")
-DataHub.Utilities.Drawing = LoadFromUrl(BASE_URL .. "Utilities/Drawing.lua", "Drawing")
+-- Загружаем утилиты (с правильными путями)
+print("Loading Utilities/Main.lua...")
+DataHub.Utilities = LoadScript("Utilities/Main.lua", "Main")
 
--- Дополнительные файлы
-DataHub.Cursor = SafeHttpGet(BASE_URL .. "Utilities/ArrowCursor.png")
+print("Loading Utilities/UI.lua...")
+DataHub.Utilities.UI = LoadScript("Utilities/UI.lua", "UI")
 
-DataHub.Loadstring = SafeHttpGet(BASE_URL .. "Utilities/Loadstring")
-DataHub.Loadstring = DataHub.Loadstring:format(
-    BASE_URL,
-    "main",
-    NotificationTime,
-    tostring(IsLocal)
-)
+print("Loading Utilities/Physics.lua...")
+DataHub.Utilities.Physics = LoadScript("Utilities/Physics.lua", "Physics")
+
+print("Loading Utilities/Drawing.lua...")
+DataHub.Utilities.Drawing = LoadScript("Utilities/Drawing.lua", "Drawing")
+
+-- Загружаем курсор (изображение)
+print("Loading ArrowCursor.png...")
+local cursorData = GetBinaryFile("Utilities/ArrowCursor.png")
+if cursorData and cursorData ~= "" then
+    DataHub.Cursor = cursorData
+    print("ArrowCursor loaded, size:", #cursorData)
+else
+    warn("Failed to load ArrowCursor.png")
+    DataHub.Cursor = nil
+end
+
+-- Загружаем шаблон для телепортации
+print("Loading Loadstring...")
+local loadstringContent = GetFile("Utilities/Loadstring")
+if loadstringContent and loadstringContent ~= "" then
+    DataHub.Loadstring = loadstringContent:format(
+        BASE_URL,
+        Branch,
+        NotificationTime,
+        tostring(IsLocal)
+    )
+else
+    warn("Failed to load Loadstring")
+    DataHub.Loadstring = ""
+end
 
 -- Телепорт
 LocalPlayer.OnTeleport:Connect(function(State)
@@ -113,10 +164,11 @@ local gameId = tostring(game.GameId)
 local gameInfo = DataHub.Games[gameId]
 
 if gameInfo then
-    local scriptUrl = BASE_URL .. "Games/" .. gameInfo.Script .. ".lua"
-    LoadFromUrl(scriptUrl, gameInfo.Script)
+    print("Loading game script: Games/" .. gameInfo.Script .. ".lua")
+    LoadScript("Games/" .. gameInfo.Script .. ".lua", gameInfo.Script)
 else
-    LoadFromUrl(BASE_URL .. "Universal.lua", "Universal")
+    print("Loading Universal.lua")
+    LoadScript("Universal.lua", "Universal")
 end
 
 DataHub.Loaded = true
@@ -130,3 +182,5 @@ if DataHub.Utilities and DataHub.Utilities.UI then
         Duration = NotificationTime
     })
 end
+
+print("Data Hub Loader completed successfully!")
