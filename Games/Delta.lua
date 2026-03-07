@@ -1,6 +1,6 @@
 -- Data Hub - Project Delta (Complete ESP: 3D Box, Shifter, Pro HealthBar, Nametag, Distance, Weapon, Skeleton, Dead ESP)
 -- Game ID: 2862098693
--- Features: RageBot, Gun Mods, World, Misc, and Ultimate ESP (all elements, dead players in gray)
+-- Features: RageBot, Gun Mods, World, Misc, and Ultimate ESP (all elements, dead players in gray, fixed corpse tracking)
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
@@ -65,16 +65,16 @@ local Settings = {
             Enabled = false,
             Color = {1, 0, 0, 0, false},
             Thickness = 2,
-            Mode = "From Bottom" -- добавим режим, но пока фиксировано
+            Mode = "From Bottom"
         },
         Shifter = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false}   -- зелёный
+            Color = {0, 1, 0, 0, false}   -- зелёный
         },
         Health = {
             Bar = false,
             ColorMode = "Gradient",
-            Position = "Left" -- фиксировано слева
+            Position = "Left"
         },
         Name = {
             Enabled = false,
@@ -98,10 +98,13 @@ local Settings = {
         TeamCheck = true,
         DeadPlayers = false,  -- показывать мёртвых?
         DeadColor = {0.5, 0.5, 0.5, 0, false}, -- серый для мёртвых
-        -- Object ESP
-        ItemText = { Enabled = false, Color = {1,1,1,0,false}, Distance = 100 },
-        QuestItems = { Enabled = false, Color = {0,1,0,0,false} },
-        Vehicles = { Enabled = false, Color = {0,0,1,0,false} },
+        -- Цвета для команды
+        AllyColor = {0, 1, 0, 0, false},
+        EnemyColor = {1, 0, 0, 0, false},
+        -- Object ESP (цвет ItemText теперь оранжевый)
+        ItemText = { Enabled = false, Color = {0.1, 1, 1, 0, false}, Distance = 100 }, -- оранжевый (HSV: 0.1,1,1)
+        QuestItems = { Enabled = false, Color = {0,1,0,0,false}, Distance = 100 },
+        Vehicles = { Enabled = false, Color = {0,0,1,0,false}, Distance = 100 },
         DeathHistory = { Enabled = false, Color = {1,0,0,0,false}, Duration = 300 },
         Zoom = { Enabled = false, Level = 20 }
     },
@@ -373,8 +376,8 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
         ItemTextSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/ItemText/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.ItemText.Enabled = val end})
         ItemTextSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/ItemText/Color", Value = Settings.Visuals.ItemText.Color,
-            Callback = function(val) Settings.Visuals.ItemText.Color = val end})
-        ItemTextSection:Slider({Name = "Distance", Flag = "Delta/Visuals/ItemText/Distance", Min = 30, Max = 1000, Value = 100,
+            Callback = function(hsv, color) Settings.Visuals.ItemText.Color = hsv end})
+        ItemTextSection:Slider({Name = "Max Distance", Flag = "Delta/Visuals/ItemText/Distance", Min = 30, Max = 1000, Value = 100,
             Callback = function(val) Settings.Visuals.ItemText.Distance = val end})
     end
 
@@ -382,21 +385,25 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
         QuestSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/QuestItems/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.QuestItems.Enabled = val end})
         QuestSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/QuestItems/Color", Value = Settings.Visuals.QuestItems.Color,
-            Callback = function(val) Settings.Visuals.QuestItems.Color = val end})
+            Callback = function(hsv, color) Settings.Visuals.QuestItems.Color = hsv end})
+        QuestSection:Slider({Name = "Max Distance", Flag = "Delta/Visuals/QuestItems/Distance", Min = 30, Max = 1000, Value = 100,
+            Callback = function(val) Settings.Visuals.QuestItems.Distance = val end})
     end
 
     local VehicleSection = VisualsTab:Section({Name = "Vehicles", Side = "Right"}) do
         VehicleSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/Vehicles/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Vehicles.Enabled = val end})
         VehicleSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/Vehicles/Color", Value = Settings.Visuals.Vehicles.Color,
-            Callback = function(val) Settings.Visuals.Vehicles.Color = val end})
+            Callback = function(hsv, color) Settings.Visuals.Vehicles.Color = hsv end})
+        VehicleSection:Slider({Name = "Max Distance", Flag = "Delta/Visuals/Vehicles/Distance", Min = 30, Max = 1000, Value = 100,
+            Callback = function(val) Settings.Visuals.Vehicles.Distance = val end})
     end
 
     local DeathSection = VisualsTab:Section({Name = "Death History", Side = "Right"}) do
         DeathSection:Toggle({Name = "Enabled", Flag = "Delta/Visuals/DeathHistory/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.DeathHistory.Enabled = val end})
         DeathSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/DeathHistory/Color", Value = Settings.Visuals.DeathHistory.Color,
-            Callback = function(val) Settings.Visuals.DeathHistory.Color = val end})
+            Callback = function(hsv, color) Settings.Visuals.DeathHistory.Color = hsv end})
         DeathSection:Slider({Name = "Duration (sec)", Flag = "Delta/Visuals/DeathHistory/Duration", Min = 10, Max = 600, Value = 300,
             Callback = function(val) Settings.Visuals.DeathHistory.Duration = val end})
     end
@@ -603,8 +610,13 @@ local function HSVToColor(hsv)
     return Color3.fromHSV(hsv[1] or 0, hsv[2] or 1, hsv[3] or 1)
 end
 
--- Data for each player
+-- Данные для каждого игрока (живого или мёртвого)
 local PlayerESPData = {}
+
+-- Структура данных:
+-- Для живых: используем player.Character
+-- Для мёртвых: ищем труп в Workspace по имени, если не находим, используем последнюю известную позицию (статичный ESP)
+-- Также храним последние известные параметры (размер, корень) для статичного режима
 
 local function CreatePlayerESP(player)
     if PlayerESPData[player] then return end
@@ -628,7 +640,13 @@ local function CreatePlayerESP(player)
         -- Скелет (15 линий)
         SkeletonLines = {},
         debounce = 0,
-        shifteroffset = 0
+        shifteroffset = 0,
+        -- Для мёртвых: сохраняем последнюю позицию и размер
+        isDead = false,
+        lastPosition = nil,
+        lastSize = nil,
+        lastRootCFrame = nil,
+        corpse = nil
     }
     -- Настройка хилбара
     data.HealthBarBG.Color = Color3.new(0,0,0)
@@ -657,7 +675,7 @@ local function RemovePlayerESP(player)
     PlayerESPData[player] = nil
 end
 
--- Object ESP storage (unchanged)
+-- Object ESP storage
 local ItemESP = {}
 local QuestESP = {}
 local VehicleESP = {}
@@ -671,7 +689,8 @@ end
 local function UpdateObjectESP(list, flagName)
     local enabled = Settings.Visuals[flagName] and Settings.Visuals[flagName].Enabled or false
     local color = HSVToColor(Settings.Visuals[flagName] and Settings.Visuals[flagName].Color or {1,1,1,0,false})
-    local maxDist = Settings.Visuals.General.MaxDistance
+    -- Используем индивидуальную дистанцию для каждого типа объектов
+    local maxDist = Settings.Visuals[flagName] and Settings.Visuals[flagName].Distance or Settings.Visuals.General.MaxDistance
     for _, e in ipairs(list) do
         if e.obj and e.obj.Parent and e.part and e.part.Parent then
             local pos = e.part.Position
@@ -745,7 +764,7 @@ local function UpdateDeathESP()
     end
 end
 
--- Skeleton update function (адаптирована)
+-- Skeleton update function
 local function UpdateSkeleton(data, char, color, thickness)
     local lines = data.SkeletonLines
     for i = 1, #lines do lines[i].Visible = false end
@@ -797,6 +816,24 @@ local function UpdateSkeleton(data, char, color, thickness)
     end
 end
 
+-- Функция для поиска трупа игрока
+local function FindCorpse(player)
+    -- Сначала ищем в корне Workspace модель с именем игрока
+    local corpse = Workspace:FindFirstChild(player.Name)
+    if corpse and corpse:IsA("Model") then
+        return corpse
+    end
+    -- Затем ищем в папке Corpses (если есть)
+    local corpsesFolder = Workspace:FindFirstChild("Corpses")
+    if corpsesFolder then
+        corpse = corpsesFolder:FindFirstChild(player.Name)
+        if corpse and corpse:IsA("Model") then
+            return corpse
+        end
+    end
+    return nil
+end
+
 -- Main render loop
 RunService.RenderStepped:Connect(function()
     if not Settings.Visuals.General.Enabled then
@@ -826,23 +863,55 @@ RunService.RenderStepped:Connect(function()
             if not data then continue end
 
             local char = player.Character
-            if not char then
-                for _, line in pairs(data.lines) do line.Visible = false end
-                data.Shifter.Visible = false
-                data.HealthBarBG.Visible = false
-                data.HealthBarFill.Visible = false
-                data.Name.Visible = false
-                data.Distance.Visible = false
-                data.Weapon.Visible = false
-                for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
-                continue
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local isAlive = hum and hum.Health > 0
+
+            -- Определяем, жив ли игрок и нужно ли его показывать
+            if isAlive then
+                -- Живой: используем его персонажа
+                data.isDead = false
+                -- (остальная обработка ниже)
+            else
+                -- Мёртвый
+                if not Settings.Visuals.DeadPlayers then
+                    -- Скрываем всё
+                    for _, line in pairs(data.lines) do line.Visible = false end
+                    data.Shifter.Visible = false
+                    data.HealthBarBG.Visible = false
+                    data.HealthBarFill.Visible = false
+                    data.Name.Visible = false
+                    data.Distance.Visible = false
+                    data.Weapon.Visible = false
+                    for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
+                    continue
+                end
+
+                -- Пытаемся найти труп
+                local corpse = FindCorpse(player)
+                if corpse then
+                    -- Используем труп
+                    char = corpse
+                    data.corpse = corpse
+                    data.isDead = true
+                else
+                    -- Если труп не найден, скрываем
+                    for _, line in pairs(data.lines) do line.Visible = false end
+                    data.Shifter.Visible = false
+                    data.HealthBarBG.Visible = false
+                    data.HealthBarFill.Visible = false
+                    data.Name.Visible = false
+                    data.Distance.Visible = false
+                    data.Weapon.Visible = false
+                    for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
+                    continue
+                end
             end
 
-            local hum = char:FindFirstChildOfClass("Humanoid")
+            -- Теперь char определён (живой персонаж или труп)
             local root = char:FindFirstChild("HumanoidRootPart")
             local head = char:FindFirstChild("Head")
 
-            if not hum or not root or not head then
+            if not root or not head then
                 for _, line in pairs(data.lines) do line.Visible = false end
                 data.Shifter.Visible = false
                 data.HealthBarBG.Visible = false
@@ -854,21 +923,11 @@ RunService.RenderStepped:Connect(function()
                 continue
             end
 
-            local isDead = (hum.Health <= 0)
-            -- Проверка, нужно ли показывать мёртвых
-            if isDead and not Settings.Visuals.DeadPlayers then
-                for _, line in pairs(data.lines) do line.Visible = false end
-                data.Shifter.Visible = false
-                data.HealthBarBG.Visible = false
-                data.HealthBarFill.Visible = false
-                data.Name.Visible = false
-                data.Distance.Visible = false
-                data.Weapon.Visible = false
-                for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
-                continue
-            end
+            -- Сохраняем последние данные для статичного режима (на случай, если труп исчезнет)
+            data.lastPosition = root.Position
+            data.lastRootCFrame = root.CFrame
+            data.lastSize = head.Size
 
-            -- Check distance
             local dist = (root.Position - Camera.CFrame.Position).Magnitude
             if dist > Settings.Visuals.General.MaxDistance then
                 for _, line in pairs(data.lines) do line.Visible = false end
@@ -882,7 +941,6 @@ RunService.RenderStepped:Connect(function()
                 continue
             end
 
-            -- Get screen position of root
             local pos, vis = Camera:WorldToViewportPoint(root.Position)
             if not vis then
                 for _, line in pairs(data.lines) do line.Visible = false end
@@ -920,7 +978,7 @@ RunService.RenderStepped:Connect(function()
             -- Determine colors based on team check and alive/dead
             local mainColor, tracerColor, shifterColor, textColor, skeletonColor
             local deadHSV = Settings.Visuals.DeadColor or {0.5, 0.5, 0.5, 0, false}
-            if isDead then
+            if data.isDead then
                 mainColor = HSVToColor(deadHSV)
                 tracerColor = mainColor
                 shifterColor = mainColor
@@ -933,8 +991,8 @@ RunService.RenderStepped:Connect(function()
                     local enemyHSV = Settings.Visuals.EnemyColor
                     mainColor = isEnemy and HSVToColor(enemyHSV) or HSVToColor(allyHSV)
                     tracerColor = mainColor
-                    shifterColor = HSVToColor(Settings.Visuals.Shifter.Color) -- отдельно для шифтера
-                    textColor = HSVToColor(Settings.Visuals.Name.Color) -- имя может быть отдельным цветом
+                    shifterColor = HSVToColor(Settings.Visuals.Shifter.Color)
+                    textColor = HSVToColor(Settings.Visuals.Name.Color)
                     skeletonColor = HSVToColor(Settings.Visuals.Skeleton.Color)
                 else
                     mainColor = HSVToColor(Settings.Visuals.Box.Color)
@@ -997,8 +1055,8 @@ RunService.RenderStepped:Connect(function()
                 end
             end
 
-            -- Shifter animation
-            if Settings.Visuals.Shifter.Enabled and not isDead then -- шифтер только для живых
+            -- Shifter animation (только для живых)
+            if Settings.Visuals.Shifter.Enabled and not data.isDead then
                 if data.debounce == 0 then
                     data.debounce = 1
                     task.spawn(function()
@@ -1047,7 +1105,7 @@ RunService.RenderStepped:Connect(function()
             end
 
             -- Health Bar (только для живых)
-            if Settings.Visuals.Health.Bar and not isDead then
+            if Settings.Visuals.Health.Bar and not data.isDead then
                 local minX = math.min(corners[1].X, corners[2].X, corners[3].X, corners[4].X, corners[5].X, corners[6].X, corners[7].X, corners[8].X)
                 local maxY = math.max(corners[1].Y, corners[2].Y, corners[3].Y, corners[4].Y, corners[5].Y, corners[6].Y, corners[7].Y, corners[8].Y)
                 local minY = math.min(corners[1].Y, corners[2].Y, corners[3].Y, corners[4].Y, corners[5].Y, corners[6].Y, corners[7].Y, corners[8].Y)
@@ -1096,8 +1154,8 @@ RunService.RenderStepped:Connect(function()
                 data.Distance.Visible = false
             end
 
-            -- Weapon
-            if Settings.Visuals.Weapon.Enabled then
+            -- Weapon (только для живых)
+            if Settings.Visuals.Weapon.Enabled and not data.isDead then
                 local weaponName = GetCurrentWeapon(player)
                 if weaponName ~= "None" then
                     data.Weapon.Visible = true
@@ -1112,8 +1170,8 @@ RunService.RenderStepped:Connect(function()
                 data.Weapon.Visible = false
             end
 
-            -- Skeleton
-            if Settings.Visuals.Skeleton.Enabled then
+            -- Skeleton (только для живых, у трупов нет скелета)
+            if Settings.Visuals.Skeleton.Enabled and not data.isDead then
                 UpdateSkeleton(data, char, skeletonColor, Settings.Visuals.Skeleton.Thickness)
             else
                 for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
@@ -1128,7 +1186,7 @@ RunService.RenderStepped:Connect(function()
     UpdateDeathESP()
 end)
 
--- Initialize objects (unchanged)
+-- Initialize objects
 if Workspace:FindFirstChild("Containers") then
     for _, obj in ipairs(Workspace.Containers:GetChildren()) do
         if obj:IsA("Model") then
@@ -1174,7 +1232,7 @@ if Workspace:FindFirstChild("Vehicles") then
     end)
 end
 
--- Connect death events (unchanged)
+-- Connect death events (для Death History)
 for _, player in ipairs(Players:GetPlayers()) do
     if player.Character then
         local hum = player.Character:FindFirstChildOfClass("Humanoid")
@@ -1188,7 +1246,7 @@ Players.PlayerAdded:Connect(function(player)
     end)
 end)
 
--- Cleanup on player removal
+-- Cleanup on player removal (когда игрок полностью покидает игру)
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
 -- Zoom
@@ -1200,4 +1258,4 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-print("Data Hub - Project Delta (Complete ESP with Dead Players in Gray) loaded")
+print("Data Hub - Project Delta (Complete ESP with Dead Players in Gray, Fixed ItemText Distance) loaded")
