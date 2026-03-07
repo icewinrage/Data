@@ -581,86 +581,25 @@ local WorldTab = Window:Tab({Name = "World"}) do
     -- Вызываем при загрузке
     SaveOriginalLighting()
     
-    -- Функция для поиска и скрытия травы (ИСПРАВЛЕННАЯ, БЕЗ ОШИБОК)
-    local grassKeywords = {"Grass", "Bush", "Foliage", "Vegetation", "Plant", "Leaf", "Tree", "Flower", "Weed", "Stem", "Fills"}
-    local grassMaterials = {
-        Enum.Material.Grass,
-        Enum.Material.LeafyGrass,
-        Enum.Material.Bush,
-        Enum.Material.Fabric,
-        Enum.Material.Carpet,
-        Enum.Material.WoodPlanks
-    }
-    local hiddenObjects = {}
-
-    local function HideGrassObjects(hide)
-        -- Terrain Decoration
-        local terrain = Workspace:FindFirstChildOfClass("Terrain")
-        if terrain then
-            if hide then
-                if OriginalValues.Terrain.Decoration == nil then
-                    OriginalValues.Terrain.Decoration = terrain.Decoration
-                end
-                terrain.Decoration = false
-            else
-                if OriginalValues.Terrain.Decoration ~= nil then
-                    terrain.Decoration = OriginalValues.Terrain.Decoration
-                end
+-- Remove Grass (упрощённая версия)
+local function SetRemoveGrass(enabled)
+    local terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        if enabled then
+            -- Сохраняем оригинальное значение
+            if OriginalValues.Terrain.Decoration == nil then
+                OriginalValues.Terrain.Decoration = terrain.Decoration
+            end
+            terrain.Decoration = false
+        else
+            -- Восстанавливаем
+            if OriginalValues.Terrain.Decoration ~= nil then
+                terrain.Decoration = OriginalValues.Terrain.Decoration
             end
         end
-        
-        -- Поиск и скрытие объектов по ключевым словам и материалам
-        local function SearchAndHide(instance, depth)
-            if depth > 10 then return end
-            
-            for _, child in ipairs(instance:GetChildren()) do
-                -- Проверка по имени
-                for _, keyword in ipairs(grassKeywords) do
-                    if child.Name:find(keyword, 1, true) then
-                        if hide then
-                            if not hiddenObjects[child] then
-                                                hiddenObjects[child] = child.Transparency
-                                child.Transparency = 1
-                            end
-                        else
-                            if hiddenObjects[child] then
-                                child.Transparency = hiddenObjects[child]
-                                hiddenObjects[child] = nil
-                            end
-                        end
-                        break
-                    end
-                end
-                
-                -- Проверка по материалу (только для частей)
-                if child:IsA("BasePart") then
-                    for _, material in ipairs(grassMaterials) do
-                        if child.Material == material then
-                            if hide then
-                                if not hiddenObjects[child] then
-                                    hiddenObjects[child] = child.Transparency
-                                    child.Transparency = 1
-                                end
-                            else
-                                if hiddenObjects[child] then
-                                    child.Transparency = hiddenObjects[child]
-                                    hiddenObjects[child] = nil
-                                end
-                            end
-                            break
-                        end
-                    end
-                end
-                
-                -- Рекурсивно ищем в папках и моделях
-                if child:IsA("Folder") or child:IsA("Model") then
-                    SearchAndHide(child, depth + 1)
-                end
-            end
-        end
-        
-        SearchAndHide(Workspace, 0)
     end
+    print("[World] Remove Grass:", enabled and "ON" or "OFF")
+end
     
     -- Функция для Full Bright
     local function SetFullBright(enabled)
