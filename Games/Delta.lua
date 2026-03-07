@@ -98,9 +98,6 @@ local Settings = {
         TeamCheck = true,
         DeadPlayers = false,  -- показывать мёртвых?
         DeadColor = {0.5, 0.5, 0.5, 0, false}, -- серый для мёртвых
-        -- Цвета для команды
-        AllyColor = {0, 1, 0, 0, false},
-        EnemyColor = {1, 0, 0, 0, false},
         -- Object ESP (цвет ItemText теперь оранжевый)
         ItemText = { Enabled = false, Color = {0.1, 1, 1, 0, false}, Distance = 100 }, -- оранжевый (HSV: 0.1,1,1)
         QuestItems = { Enabled = false, Color = {0,1,0,0,false}, Distance = 100 },
@@ -315,18 +312,16 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
     end
 
     -- Health Bar Section
-    local HealthSection = VisualsTab:Section({Name = "Health Bar", Side = "Right"}) do
+    local HealthSection = VisualsTab:Section({Name = "Health Bar", Side = "Left"}) do
         HealthSection:Toggle({Name = "Enable Health Bar", Flag = "Delta/Visuals/Health/Bar", Value = false,
             Callback = function(val) Settings.Visuals.Health.Bar = val end})
         HealthSection:Dropdown({Name = "Color Mode", Flag = "Delta/Visuals/Health/ColorMode", List = {
             {Name = "Gradient", Mode = "Button", Value = true},
-            {Name = "Red", Mode = "Button"},
-            {Name = "Green", Mode = "Button"}
         }, Callback = function(selected) Settings.Visuals.Health.ColorMode = selected[1] end})
     end
 
     -- Name Section
-    local NameSection = VisualsTab:Section({Name = "Name", Side = "Right"}) do
+    local NameSection = VisualsTab:Section({Name = "Name", Side = "Left"}) do
         NameSection:Toggle({Name = "Enable Name", Flag = "Delta/Visuals/Name/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Name.Enabled = val end})
         NameSection:Colorpicker({Name = "Name Color", Flag = "Delta/Visuals/Name/Color", Value = Settings.Visuals.Name.Color,
