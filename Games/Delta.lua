@@ -58,18 +58,18 @@ local Settings = {
         },
         Box = {
             Enabled = false,
-            Color = {1, 0, 0, 0, false},
+            Color = {1, 1, 1, 0, false},
             Thickness = 2
         },
         Tracers = {
             Enabled = false,
-            Color = {1, 0, 0, 0, false},
+            Color = {1, 1, 1, 0, false},
             Thickness = 2,
             Mode = "From Bottom"
         },
         Shifter = {
             Enabled = false,
-            Color = {0, 1, 0, 0, false}
+            Color = {1, 1, 1, 0, false}
         },
         Health = {
             Bar = false,
@@ -77,8 +77,8 @@ local Settings = {
             ColorMode = "Gradient",
             Position = "Left",
             BarWidth = 2,
-            LowColor = {1, 0, 0, 0, false},
-            HighColor = {0, 1, 0, 0, false}
+            LowColor = {1, 1, 1, 0, false},
+            HighColor = {35, 120, 65, 0, false}
         },
         Name = {
             Enabled = false,
@@ -103,16 +103,6 @@ local Settings = {
             Color = {1, 1, 1, 0, false},
             Thickness = 2
         },
-        Chams = {
-            Enabled = false,
-            EnemyColor = {0.03, 0.7, 0.5, 0.5, false},
-            AllyColor = {0.3, 0.7, 0.3, 0.5, false},
-            FillTransparency = 0.5,
-            OutlineTransparency = 0.1,
-            TeamCheck = true,
-            ChangeViewmodels = false,
-            ViewmodelsChams = false
-        },
         Radar = {
             Enabled = false,
             Position = {200, 200},
@@ -134,7 +124,7 @@ local Settings = {
             Smoothness = 0.2
         },
         AutoThickness = true,
-        TeamCheck = true,
+        TeamCheck = false,
         DeadPlayers = false,
         DeadColor = {0.5, 0.5, 0.5, 0, false},
         ItemText = { Enabled = false, Color = {0.1, 1, 1, 0, false}, Distance = 100 },
@@ -154,10 +144,8 @@ local Settings = {
         Inventory = {
             Enabled = false,
             Money = false,
-            Name = false,
-            Icons = false,
-            Moduls = false,
-            ShowAmount = 10
+            Names = false,
+            MaxItems = 30
         }
     },
     Misc = {
@@ -379,7 +367,7 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.Name.Enabled = val end})
         NameSection:Colorpicker({Name = "Name Color", Flag = "Delta/Visuals/Name/Color", Value = Settings.Visuals.Name.Color,
             Callback = function(hsv, color) Settings.Visuals.Name.Color = hsv end})
-        NameSection:Slider({Name = "Size", Flag = "Delta/Visuals/Name/Size", Min = 8, Max = 24, Value = 14,
+        NameSection:Slider({Name = "Size", Flag = "Delta/Visuals/Name/Size", Min = 8, Max = 14, Value = 14,
             Callback = function(val) Settings.Visuals.Name.Size = val end})
         NameSection:Dropdown({Name = "Position", Flag = "Delta/Visuals/Name/Position", List = {
             {Name = "Top", Mode = "Button", Value = true},
@@ -393,7 +381,7 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.Distance.Enabled = val end})
         DistanceSection:Colorpicker({Name = "Distance Color", Flag = "Delta/Visuals/Distance/Color", Value = Settings.Visuals.Distance.Color,
             Callback = function(hsv, color) Settings.Visuals.Distance.Color = hsv end})
-        DistanceSection:Slider({Name = "Size", Flag = "Delta/Visuals/Distance/Size", Min = 8, Max = 24, Value = 12,
+        DistanceSection:Slider({Name = "Size", Flag = "Delta/Visuals/Distance/Size", Min = 8, Max = 12, Value = 12,
             Callback = function(val) Settings.Visuals.Distance.Size = val end})
         DistanceSection:Dropdown({Name = "Mode", Flag = "Delta/Visuals/Distance/Mode", List = {
             {Name = "Studs", Mode = "Button", Value = true},
@@ -404,17 +392,6 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             {Name = "Top", Mode = "Button"}
         }, Callback = function(selected) Settings.Visuals.Distance.Position = selected[1] end})
     end
-
-    -- Weapon Section
-    local WeaponSection = VisualsTab:Section({Name = "Weapon", Side = "Right"}) do
-        WeaponSection:Toggle({Name = "Enable Weapon", Flag = "Delta/Visuals/Weapon/Enabled", Value = false,
-            Callback = function(val) Settings.Visuals.Weapon.Enabled = val end})
-        WeaponSection:Colorpicker({Name = "Weapon Color", Flag = "Delta/Visuals/Weapon/Color", Value = Settings.Visuals.Weapon.Color,
-            Callback = function(hsv, color) Settings.Visuals.Weapon.Color = hsv end})
-        WeaponSection:Slider({Name = "Size", Flag = "Delta/Visuals/Weapon/Size", Min = 8, Max = 24, Value = 12,
-            Callback = function(val) Settings.Visuals.Weapon.Size = val end})
-    end
-
     -- Skeleton Section
     local SkeletonSection = VisualsTab:Section({Name = "Skeleton", Side = "Right"}) do
         SkeletonSection:Toggle({Name = "Enable Skeleton", Flag = "Delta/Visuals/Skeleton/Enabled", Value = false,
@@ -423,33 +400,6 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(hsv, color) Settings.Visuals.Skeleton.Color = hsv end})
         SkeletonSection:Slider({Name = "Thickness", Flag = "Delta/Visuals/Skeleton/Thickness", Min = 1, Max = 5, Value = 2,
             Callback = function(val) Settings.Visuals.Skeleton.Thickness = val end})
-    end
-
-    -- Chams Section
-    local ChamsSection = VisualsTab:Section({Name = "Chams", Side = "Left"}) do
-        ChamsSection:Toggle({Name = "Enable Chams", Flag = "Delta/Visuals/Chams/Enabled", Value = false,
-            Callback = function(val) 
-                Settings.Visuals.Chams.Enabled = val
-                if val then
-                    LoadChams()
-                else
-                    UnloadChams()
-                end
-            end})
-        ChamsSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/Visuals/Chams/EnemyColor", Value = Settings.Visuals.Chams.EnemyColor,
-            Callback = function(hsv, color) Settings.Visuals.Chams.EnemyColor = hsv end})
-        ChamsSection:Colorpicker({Name = "Ally Color", Flag = "Delta/Visuals/Chams/AllyColor", Value = Settings.Visuals.Chams.AllyColor,
-            Callback = function(hsv, color) Settings.Visuals.Chams.AllyColor = hsv end})
-        ChamsSection:Slider({Name = "Fill Transparency", Flag = "Delta/Visuals/Chams/FillTransparency", Min = 0, Max = 1, Precise = 2, Value = 0.5,
-            Callback = function(val) Settings.Visuals.Chams.FillTransparency = val end})
-        ChamsSection:Slider({Name = "Outline Transparency", Flag = "Delta/Visuals/Chams/OutlineTransparency", Min = 0, Max = 1, Precise = 2, Value = 0.1,
-            Callback = function(val) Settings.Visuals.Chams.OutlineTransparency = val end})
-        ChamsSection:Toggle({Name = "Team Check", Flag = "Delta/Visuals/Chams/TeamCheck", Value = true,
-            Callback = function(val) Settings.Visuals.Chams.TeamCheck = val end})
-        ChamsSection:Toggle({Name = "Change Viewmodels", Flag = "Delta/Visuals/Chams/ChangeViewmodels", Value = false,
-            Callback = function(val) Settings.Visuals.Chams.ChangeViewmodels = val end})
-        ChamsSection:Toggle({Name = "Viewmodels Chams", Flag = "Delta/Visuals/Chams/ViewmodelsChams", Value = false,
-            Callback = function(val) Settings.Visuals.Chams.ViewmodelsChams = val end})
     end
 
     -- Radar Section
