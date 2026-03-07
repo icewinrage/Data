@@ -98,9 +98,6 @@ local Settings = {
         TeamCheck = true,
         DeadPlayers = false,  -- показывать мёртвых?
         DeadColor = {0.5, 0.5, 0.5, 0, false}, -- серый для мёртвых
-        -- Цвета для команды
-        AllyColor = {0, 1, 0, 0, false},
-        EnemyColor = {1, 0, 0, 0, false},
         -- Object ESP
         ItemText = { Enabled = false, Color = {1,1,1,0,false}, Distance = 100 },
         QuestItems = { Enabled = false, Color = {0,1,0,0,false} },
