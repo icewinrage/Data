@@ -1,4 +1,4 @@
--- Data Hub - Project Delta (Complete ESP: 3D Box, Shifter, Pro HealthBar, Nametag, Distance, Weapon, Skeleton, Dead ESP)
+-- Data Hub - Project Delta (Complete ESP: 3D Box, Shifter, Pro HealthBar, Nametag, Distance, Weapon, Skeleton, Dead ESP, Radar, ViewTracer)
 -- Game ID: 2862098693
 -- Features: RageBot, Gun Mods, World, Misc, and Ultimate ESP (all elements, dead players in gray, fixed corpse tracking)
 
@@ -58,7 +58,7 @@ local Settings = {
         },
         Box = {
             Enabled = false,
-            Color = {1, 0, 0, 0, false},  -- красный
+            Color = {1, 0, 0, 0, false},  -- красный (базовый)
             Thickness = 2
         },
         Tracers = {
@@ -94,12 +94,31 @@ local Settings = {
             Color = {1, 1, 1, 0, false},
             Thickness = 2
         },
+        Radar = {
+            Enabled = false,
+            Position = {200, 200},
+            Radius = 100,
+            Scale = 1,
+            RadarBack = {0.0, 1, 0.04, 0.9, false},  -- тёмно-серый
+            RadarBorder = {0.67, 0, 0.3, 0.75, false}, -- серый
+            LocalPlayerDot = {0, 0, 1, 1, false}, -- белый
+            PlayerDot = {0.6, 1, 1, 1, false}, -- голубой
+            HealthColor = true,
+            TeamCheck = true
+        },
+        ViewTracer = {
+            Enabled = false,
+            Color = {0.1, 1, 1, 1, false}, -- оранжевый
+            Thickness = 1,
+            AutoThickness = true,
+            Length = 15,
+            Smoothness = 0.2
+        },
         AutoThickness = true,
         TeamCheck = true,
-        DeadPlayers = false,  -- показывать мёртвых?
-        DeadColor = {0.5, 0.5, 0.5, 0, false}, -- серый для мёртвых
-        -- Object ESP (цвет ItemText теперь оранжевый)
-        ItemText = { Enabled = false, Color = {0.1, 1, 1, 0, false}, Distance = 100 }, -- оранжевый (HSV: 0.1,1,1)
+        DeadPlayers = false,
+        DeadColor = {0.5, 0.5, 0.5, 0, false}, -- серый
+        ItemText = { Enabled = false, Color = {0.1, 1, 1, 0, false}, Distance = 100 }, -- оранжевый
         QuestItems = { Enabled = false, Color = {0,1,0,0,false}, Distance = 100 },
         Vehicles = { Enabled = false, Color = {0,0,1,0,false}, Distance = 100 },
         DeathHistory = { Enabled = false, Color = {1,0,0,0,false}, Duration = 300 },
@@ -312,16 +331,18 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
     end
 
     -- Health Bar Section
-    local HealthSection = VisualsTab:Section({Name = "Health Bar", Side = "Left"}) do
+    local HealthSection = VisualsTab:Section({Name = "Health Bar", Side = "Right"}) do
         HealthSection:Toggle({Name = "Enable Health Bar", Flag = "Delta/Visuals/Health/Bar", Value = false,
             Callback = function(val) Settings.Visuals.Health.Bar = val end})
         HealthSection:Dropdown({Name = "Color Mode", Flag = "Delta/Visuals/Health/ColorMode", List = {
             {Name = "Gradient", Mode = "Button", Value = true},
+            {Name = "Red", Mode = "Button"},
+            {Name = "Green", Mode = "Button"}
         }, Callback = function(selected) Settings.Visuals.Health.ColorMode = selected[1] end})
     end
 
     -- Name Section
-    local NameSection = VisualsTab:Section({Name = "Name", Side = "Left"}) do
+    local NameSection = VisualsTab:Section({Name = "Name", Side = "Right"}) do
         NameSection:Toggle({Name = "Enable Name", Flag = "Delta/Visuals/Name/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Name.Enabled = val end})
         NameSection:Colorpicker({Name = "Name Color", Flag = "Delta/Visuals/Name/Color", Value = Settings.Visuals.Name.Color,
@@ -358,12 +379,42 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.Skeleton.Thickness = val end})
     end
 
-    -- Team Colors Section
-    local TeamSection = VisualsTab:Section({Name = "Team Colors", Side = "Right"}) do
-        TeamSection:Colorpicker({Name = "Ally Color", Flag = "Delta/Visuals/AllyColor", Value = Settings.Visuals.AllyColor,
-            Callback = function(hsv, color) Settings.Visuals.AllyColor = hsv end})
-        TeamSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/Visuals/EnemyColor", Value = Settings.Visuals.EnemyColor,
-            Callback = function(hsv, color) Settings.Visuals.EnemyColor = hsv end})
+    -- Radar Section
+    local RadarSection = VisualsTab:Section({Name = "Player Radar", Side = "Left"}) do
+        RadarSection:Toggle({Name = "Enable Radar", Flag = "Delta/Visuals/Radar/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.Radar.Enabled = val end})
+        RadarSection:Slider({Name = "Radius", Flag = "Delta/Visuals/Radar/Radius", Min = 50, Max = 300, Value = 100,
+            Callback = function(val) Settings.Visuals.Radar.Radius = val end})
+        RadarSection:Slider({Name = "Scale", Flag = "Delta/Visuals/Radar/Scale", Min = 0.1, Max = 3, Precise = 2, Value = 1,
+            Callback = function(val) Settings.Visuals.Radar.Scale = val end})
+        RadarSection:Colorpicker({Name = "Radar Background", Flag = "Delta/Visuals/Radar/RadarBack", Value = Settings.Visuals.Radar.RadarBack,
+            Callback = function(hsv, color) Settings.Visuals.Radar.RadarBack = hsv end})
+        RadarSection:Colorpicker({Name = "Radar Border", Flag = "Delta/Visuals/Radar/RadarBorder", Value = Settings.Visuals.Radar.RadarBorder,
+            Callback = function(hsv, color) Settings.Visuals.Radar.RadarBorder = hsv end})
+        RadarSection:Colorpicker({Name = "Local Player Dot", Flag = "Delta/Visuals/Radar/LocalPlayerDot", Value = Settings.Visuals.Radar.LocalPlayerDot,
+            Callback = function(hsv, color) Settings.Visuals.Radar.LocalPlayerDot = hsv end})
+        RadarSection:Colorpicker({Name = "Player Dot", Flag = "Delta/Visuals/Radar/PlayerDot", Value = Settings.Visuals.Radar.PlayerDot,
+            Callback = function(hsv, color) Settings.Visuals.Radar.PlayerDot = hsv end})
+        RadarSection:Toggle({Name = "Health Color", Flag = "Delta/Visuals/Radar/HealthColor", Value = true,
+            Callback = function(val) Settings.Visuals.Radar.HealthColor = val end})
+        RadarSection:Toggle({Name = "Team Check", Flag = "Delta/Visuals/Radar/TeamCheck", Value = true,
+            Callback = function(val) Settings.Visuals.Radar.TeamCheck = val end})
+    end
+
+    -- View Tracer Section
+    local ViewTracerSection = VisualsTab:Section({Name = "View Tracer", Side = "Right"}) do
+        ViewTracerSection:Toggle({Name = "Enable View Tracer", Flag = "Delta/Visuals/ViewTracer/Enabled", Value = false,
+            Callback = function(val) Settings.Visuals.ViewTracer.Enabled = val end})
+        ViewTracerSection:Colorpicker({Name = "Color", Flag = "Delta/Visuals/ViewTracer/Color", Value = Settings.Visuals.ViewTracer.Color,
+            Callback = function(hsv, color) Settings.Visuals.ViewTracer.Color = hsv end})
+        ViewTracerSection:Slider({Name = "Thickness", Flag = "Delta/Visuals/ViewTracer/Thickness", Min = 1, Max = 5, Value = 1,
+            Callback = function(val) Settings.Visuals.ViewTracer.Thickness = val end})
+        ViewTracerSection:Toggle({Name = "Auto Thickness", Flag = "Delta/Visuals/ViewTracer/AutoThickness", Value = true,
+            Callback = function(val) Settings.Visuals.ViewTracer.AutoThickness = val end})
+        ViewTracerSection:Slider({Name = "Length", Flag = "Delta/Visuals/ViewTracer/Length", Min = 5, Max = 50, Value = 15,
+            Callback = function(val) Settings.Visuals.ViewTracer.Length = val end})
+        ViewTracerSection:Slider({Name = "Smoothness", Flag = "Delta/Visuals/ViewTracer/Smoothness", Min = 0.01, Max = 1, Precise = 2, Value = 0.2,
+            Callback = function(val) Settings.Visuals.ViewTracer.Smoothness = val end})
     end
 
     -- Object ESP Sections
@@ -600,74 +651,316 @@ local function NewText()
     return text
 end
 
+-- Helper: create a circle
+local function NewCircle(Transparency, Color, Radius, Filled, Thickness)
+    local c = Drawing.new("Circle")
+    c.Transparency = Transparency
+    c.Color = Color
+    c.Visible = false
+    c.Thickness = Thickness
+    c.Position = Vector2.new(0, 0)
+    c.Radius = Radius
+    c.NumSides = math.clamp(Radius*55/100, 10, 75)
+    c.Filled = Filled
+    return c
+end
+
+-- Helper: create a triangle
+local function NewTriangle()
+    local t = Drawing.new("Triangle")
+    t.Visible = false
+    t.Thickness = 1
+    t.Filled = true
+    t.Color = Color3.fromHSV(1,1,1)
+    return t
+end
+
 -- Helper: convert HSV table to Color3
 local function HSVToColor(hsv)
     return Color3.fromHSV(hsv[1] or 0, hsv[2] or 1, hsv[3] or 1)
 end
 
--- Данные для каждого игрока (живого или мёртвого)
+-- Данные для каждого игрока
 local PlayerESPData = {}
+local RadarData = {}
+local ViewTracerData = {}
 
--- Структура данных:
--- Для живых: используем player.Character
--- Для мёртвых: ищем труп в Workspace по имени, если не находим, используем последнюю известную позицию (статичный ESP)
--- Также храним последние известные параметры (размер, корень) для статичного режима
+-- Функция для поиска трупа игрока
+local function FindCorpse(player)
+    local corpse = Workspace:FindFirstChild(player.Name)
+    if corpse and corpse:IsA("Model") then
+        return corpse
+    end
+    local corpsesFolder = Workspace:FindFirstChild("Corpses")
+    if corpsesFolder then
+        corpse = corpsesFolder:FindFirstChild(player.Name)
+        if corpse and corpse:IsA("Model") then
+            return corpse
+        end
+    end
+    return nil
+end
 
+-- ███████████████████████████████████████████████████████
+-- RADAR SYSTEM (from Blissful)
+-- ███████████████████████████████████████████████████████
+local RadarInfo = {
+    Position = Vector2.new(200, 200),
+    Radius = 100,
+    Scale = 1,
+    RadarBack = Color3.fromRGB(10, 10, 10),
+    RadarBorder = Color3.fromRGB(75, 75, 75),
+    LocalPlayerDot = Color3.fromRGB(255, 255, 255),
+    PlayerDot = Color3.fromRGB(60, 170, 255),
+    Health_Color = true,
+    Team_Check = true
+}
+
+local RadarBackground = NewCircle(0.9, RadarInfo.RadarBack, RadarInfo.Radius, true, 1)
+RadarBackground.Visible = false
+
+local RadarBorder = NewCircle(0.75, RadarInfo.RadarBorder, RadarInfo.Radius, false, 3)
+RadarBorder.Visible = false
+
+local LocalPlayerDot = NewTriangle()
+LocalPlayerDot.Visible = false
+
+local function UpdateRadar()
+    if not Settings.Visuals.Radar.Enabled then
+        RadarBackground.Visible = false
+        RadarBorder.Visible = false
+        LocalPlayerDot.Visible = false
+        for _, data in pairs(RadarData) do
+            if data.dot then data.dot.Visible = false end
+        end
+        return
+    end
+
+    RadarBackground.Visible = true
+    RadarBorder.Visible = true
+    LocalPlayerDot.Visible = true
+
+    -- Update settings
+    RadarInfo.Radius = Settings.Visuals.Radar.Radius
+    RadarInfo.Scale = Settings.Visuals.Radar.Scale
+    RadarInfo.RadarBack = HSVToColor(Settings.Visuals.Radar.RadarBack)
+    RadarInfo.RadarBorder = HSVToColor(Settings.Visuals.Radar.RadarBorder)
+    RadarInfo.LocalPlayerDot = HSVToColor(Settings.Visuals.Radar.LocalPlayerDot)
+    RadarInfo.PlayerDot = HSVToColor(Settings.Visuals.Radar.PlayerDot)
+    RadarInfo.Health_Color = Settings.Visuals.Radar.HealthColor
+    RadarInfo.Team_Check = Settings.Visuals.Radar.TeamCheck
+
+    RadarBackground.Position = RadarInfo.Position
+    RadarBackground.Radius = RadarInfo.Radius
+    RadarBackground.Color = RadarInfo.RadarBack
+
+    RadarBorder.Position = RadarInfo.Position
+    RadarBorder.Radius = RadarInfo.Radius
+    RadarBorder.Color = RadarInfo.RadarBorder
+
+    LocalPlayerDot.Color = RadarInfo.LocalPlayerDot
+    LocalPlayerDot.PointA = RadarInfo.Position + Vector2.new(0, -6)
+    LocalPlayerDot.PointB = RadarInfo.Position + Vector2.new(-3, 6)
+    LocalPlayerDot.PointC = RadarInfo.Position + Vector2.new(3, 6)
+end
+
+local function GetRelative(pos)
+    local char = LocalPlayer.Character
+    if char and char.PrimaryPart then
+        local pmpart = char.PrimaryPart
+        local camerapos = Vector3.new(Camera.CFrame.Position.X, pmpart.Position.Y, Camera.CFrame.Position.Z)
+        local newcf = CFrame.new(pmpart.Position, camerapos)
+        local r = newcf:PointToObjectSpace(pos)
+        return r.X, r.Z
+    else
+        return 0, 0
+    end
+end
+
+local function CreateRadarDot(player)
+    if RadarData[player] then return end
+    local dot = NewCircle(1, RadarInfo.PlayerDot, 3, true, 1)
+    RadarData[player] = { dot = dot }
+end
+
+local function UpdateRadarDot(player)
+    local data = RadarData[player]
+    if not data then return end
+    local dot = data.dot
+    if not dot then return end
+
+    local char = player.Character
+    if not char or not char.PrimaryPart then
+        dot.Visible = false
+        return
+    end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then
+        dot.Visible = false
+        return
+    end
+
+    local relx, rely = GetRelative(char.PrimaryPart.Position)
+    local newpos = RadarInfo.Position - Vector2.new(relx * RadarInfo.Scale, rely * RadarInfo.Scale)
+
+    if (newpos - RadarInfo.Position).Magnitude < RadarInfo.Radius - 2 then
+        dot.Radius = 3
+        dot.Position = newpos
+        dot.Visible = true
+    else
+        local dist = (RadarInfo.Position - newpos).Magnitude
+        local calc = (RadarInfo.Position - newpos).Unit * (dist - RadarInfo.Radius)
+        local inside = Vector2.new(newpos.X + calc.X, newpos.Y + calc.Y)
+        dot.Radius = 2
+        dot.Position = inside
+        dot.Visible = true
+    end
+
+    if RadarInfo.Health_Color then
+        local healthPercent = hum.Health / hum.MaxHealth
+        dot.Color = Color3.new(1 - healthPercent, healthPercent, 0)
+    elseif RadarInfo.Team_Check then
+        if player.TeamColor == LocalPlayer.TeamColor then
+            dot.Color = RadarInfo.LocalPlayerDot -- используем цвет локального игрока для союзников
+        else
+            dot.Color = RadarInfo.PlayerDot
+        end
+    else
+        dot.Color = RadarInfo.PlayerDot
+    end
+end
+
+-- ███████████████████████████████████████████████████████
+-- VIEW TRACER SYSTEM (from Blissful)
+-- ███████████████████████████████████████████████████████
+local function CreateViewTracer(player)
+    if ViewTracerData[player] then return end
+    local line = Drawing.new("Line")
+    line.Visible = false
+    line.From = Vector2.new(0, 0)
+    line.To = Vector2.new(0, 0)
+    line.Color = HSVToColor(Settings.Visuals.ViewTracer.Color)
+    line.Thickness = Settings.Visuals.ViewTracer.Thickness
+    line.Transparency = 1
+    ViewTracerData[player] = { line = line }
+end
+
+local function UpdateViewTracer(player)
+    local data = ViewTracerData[player]
+    if not data then return end
+    local line = data.line
+    if not line then return end
+
+    if not Settings.Visuals.ViewTracer.Enabled then
+        line.Visible = false
+        return
+    end
+
+    local char = player.Character
+    if not char then
+        line.Visible = false
+        return
+    end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local head = char:FindFirstChild("Head")
+    if not hum or hum.Health <= 0 or not head then
+        line.Visible = false
+        return
+    end
+
+    local headpos, onScreen = Camera:WorldToViewportPoint(head.Position)
+    if not onScreen then
+        line.Visible = false
+        return
+    end
+
+    line.Color = HSVToColor(Settings.Visuals.ViewTracer.Color)
+
+    if Settings.Visuals.ViewTracer.AutoThickness then
+        local distance = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and 
+                         (LocalPlayer.Character.HumanoidRootPart.Position - char.HumanoidRootPart.Position).Magnitude) or 100
+        line.Thickness = math.clamp(1/distance*100, 0.1, 3)
+    else
+        line.Thickness = Settings.Visuals.ViewTracer.Thickness
+    end
+
+    local offsetCFrame = CFrame.new(0, 0, -Settings.Visuals.ViewTracer.Length)
+    local check = false
+    line.From = Vector2.new(headpos.X, headpos.Y)
+
+    repeat
+        local dir = head.CFrame:ToWorldSpace(offsetCFrame)
+        offsetCFrame = offsetCFrame * CFrame.new(0, 0, Settings.Visuals.ViewTracer.Smoothness)
+        local dirpos, vis = Camera:WorldToViewportPoint(Vector3.new(dir.X, dir.Y, dir.Z))
+        if vis then
+            check = true
+            line.To = Vector2.new(dirpos.X, dirpos.Y)
+            line.Visible = true
+        end
+    until check == true
+end
+
+-- Основная структура ESP (игроки)
 local function CreatePlayerESP(player)
     if PlayerESPData[player] then return end
     local data = {
-        -- 12 линий для 3D бокса
         lines = {
             line1 = NewLine(), line2 = NewLine(), line3 = NewLine(), line4 = NewLine(),
             line5 = NewLine(), line6 = NewLine(), line7 = NewLine(), line8 = NewLine(),
             line9 = NewLine(), line10 = NewLine(), line11 = NewLine(), line12 = NewLine(),
             Tracer = NewLine()
         },
-        -- Шифтер
         Shifter = NewQuad(),
-        -- Хилбар (фон и заполнение)
         HealthBarBG = NewLine(),
         HealthBarFill = NewLine(),
-        -- Текстовые элементы
         Name = NewText(),
         Distance = NewText(),
         Weapon = NewText(),
-        -- Скелет (15 линий)
         SkeletonLines = {},
         debounce = 0,
         shifteroffset = 0,
-        -- Для мёртвых: сохраняем последнюю позицию и размер
         isDead = false,
         lastPosition = nil,
         lastSize = nil,
         lastRootCFrame = nil,
         corpse = nil
     }
-    -- Настройка хилбара
     data.HealthBarBG.Color = Color3.new(0,0,0)
     data.HealthBarBG.Thickness = 4
     data.HealthBarFill.Thickness = 4
-    -- Создание линий скелета
     for i = 1, 15 do
         local line = NewLine()
         line.Thickness = Settings.Visuals.Skeleton.Thickness or 2
         data.SkeletonLines[i] = line
     end
     PlayerESPData[player] = data
+    CreateRadarDot(player)
+    CreateViewTracer(player)
 end
 
 local function RemovePlayerESP(player)
     local data = PlayerESPData[player]
-    if not data then return end
-    for _, line in pairs(data.lines) do line:Destroy() end
-    data.Shifter:Destroy()
-    data.HealthBarBG:Destroy()
-    data.HealthBarFill:Destroy()
-    data.Name:Destroy()
-    data.Distance:Destroy()
-    data.Weapon:Destroy()
-    for _, line in ipairs(data.SkeletonLines) do line:Destroy() end
-    PlayerESPData[player] = nil
+    if data then
+        for _, line in pairs(data.lines) do line:Destroy() end
+        data.Shifter:Destroy()
+        data.HealthBarBG:Destroy()
+        data.HealthBarFill:Destroy()
+        data.Name:Destroy()
+        data.Distance:Destroy()
+        data.Weapon:Destroy()
+        for _, line in ipairs(data.SkeletonLines) do line:Destroy() end
+        PlayerESPData[player] = nil
+    end
+    if RadarData[player] then
+        RadarData[player].dot:Destroy()
+        RadarData[player] = nil
+    end
+    if ViewTracerData[player] then
+        ViewTracerData[player].line:Destroy()
+        ViewTracerData[player] = nil
+    end
 end
 
 -- Object ESP storage
@@ -684,7 +977,6 @@ end
 local function UpdateObjectESP(list, flagName)
     local enabled = Settings.Visuals[flagName] and Settings.Visuals[flagName].Enabled or false
     local color = HSVToColor(Settings.Visuals[flagName] and Settings.Visuals[flagName].Color or {1,1,1,0,false})
-    -- Используем индивидуальную дистанцию для каждого типа объектов
     local maxDist = Settings.Visuals[flagName] and Settings.Visuals[flagName].Distance or Settings.Visuals.General.MaxDistance
     for _, e in ipairs(list) do
         if e.obj and e.obj.Parent and e.part and e.part.Parent then
@@ -709,7 +1001,7 @@ local function UpdateObjectESP(list, flagName)
     end
 end
 
--- Death history (unchanged)
+-- Death history
 local DeathESP = {}
 local DeathCounter = 0
 
@@ -811,28 +1103,9 @@ local function UpdateSkeleton(data, char, color, thickness)
     end
 end
 
--- Функция для поиска трупа игрока
-local function FindCorpse(player)
-    -- Сначала ищем в корне Workspace модель с именем игрока
-    local corpse = Workspace:FindFirstChild(player.Name)
-    if corpse and corpse:IsA("Model") then
-        return corpse
-    end
-    -- Затем ищем в папке Corpses (если есть)
-    local corpsesFolder = Workspace:FindFirstChild("Corpses")
-    if corpsesFolder then
-        corpse = corpsesFolder:FindFirstChild(player.Name)
-        if corpse and corpse:IsA("Model") then
-            return corpse
-        end
-    end
-    return nil
-end
-
 -- Main render loop
 RunService.RenderStepped:Connect(function()
     if not Settings.Visuals.General.Enabled then
-        -- Hide everything
         for _, data in pairs(PlayerESPData) do
             for _, line in pairs(data.lines) do line.Visible = false end
             data.Shifter.Visible = false
@@ -847,12 +1120,24 @@ RunService.RenderStepped:Connect(function()
             for _, e in ipairs(list) do e.text.Visible = false end
         end
         for _, e in ipairs(DeathESP) do e.text.Visible = false end
+        RadarBackground.Visible = false
+        RadarBorder.Visible = false
+        LocalPlayerDot.Visible = false
+        for _, data in pairs(RadarData) do if data.dot then data.dot.Visible = false end end
+        for _, data in pairs(ViewTracerData) do if data.line then data.line.Visible = false end end
         return
     end
 
-    -- Update players
+    -- Обновляем радар
+    UpdateRadar()
+
+    -- Обновляем игроков
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer or Settings.Visuals.General.IncludeNPC then
+        if player == LocalPlayer then
+            -- Пропускаем себя
+            if RadarData[player] then RadarData[player].dot.Visible = false end
+            if ViewTracerData[player] then ViewTracerData[player].line.Visible = false end
+        else
             if not PlayerESPData[player] then CreatePlayerESP(player) end
             local data = PlayerESPData[player]
             if not data then continue end
@@ -861,15 +1146,10 @@ RunService.RenderStepped:Connect(function()
             local hum = char and char:FindFirstChildOfClass("Humanoid")
             local isAlive = hum and hum.Health > 0
 
-            -- Определяем, жив ли игрок и нужно ли его показывать
             if isAlive then
-                -- Живой: используем его персонажа
                 data.isDead = false
-                -- (остальная обработка ниже)
             else
-                -- Мёртвый
                 if not Settings.Visuals.DeadPlayers then
-                    -- Скрываем всё
                     for _, line in pairs(data.lines) do line.Visible = false end
                     data.Shifter.Visible = false
                     data.HealthBarBG.Visible = false
@@ -878,18 +1158,17 @@ RunService.RenderStepped:Connect(function()
                     data.Distance.Visible = false
                     data.Weapon.Visible = false
                     for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
+                    if RadarData[player] then RadarData[player].dot.Visible = false end
+                    if ViewTracerData[player] then ViewTracerData[player].line.Visible = false end
                     continue
                 end
 
-                -- Пытаемся найти труп
                 local corpse = FindCorpse(player)
                 if corpse then
-                    -- Используем труп
                     char = corpse
                     data.corpse = corpse
                     data.isDead = true
                 else
-                    -- Если труп не найден, скрываем
                     for _, line in pairs(data.lines) do line.Visible = false end
                     data.Shifter.Visible = false
                     data.HealthBarBG.Visible = false
@@ -898,11 +1177,19 @@ RunService.RenderStepped:Connect(function()
                     data.Distance.Visible = false
                     data.Weapon.Visible = false
                     for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
+                    if RadarData[player] then RadarData[player].dot.Visible = false end
+                    if ViewTracerData[player] then ViewTracerData[player].line.Visible = false end
                     continue
                 end
             end
 
-            -- Теперь char определён (живой персонаж или труп)
+            -- Обновляем радар для этого игрока
+            UpdateRadarDot(player)
+
+            -- Обновляем вью трейсер
+            UpdateViewTracer(player)
+
+            -- Основной ESP для игрока
             local root = char:FindFirstChild("HumanoidRootPart")
             local head = char:FindFirstChild("Head")
 
@@ -917,11 +1204,6 @@ RunService.RenderStepped:Connect(function()
                 for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
                 continue
             end
-
-            -- Сохраняем последние данные для статичного режима (на случай, если труп исчезнет)
-            data.lastPosition = root.Position
-            data.lastRootCFrame = root.CFrame
-            data.lastSize = head.Size
 
             local dist = (root.Position - Camera.CFrame.Position).Magnitude
             if dist > Settings.Visuals.General.MaxDistance then
@@ -956,21 +1238,21 @@ RunService.RenderStepped:Connect(function()
             -- Compute 8 corners of the box
             local corners = {}
             local offsets = {
-                {-size.X, size.Y, -size.Z},  -- Top1
-                {-size.X, size.Y,  size.Z},  -- Top2
-                { size.X, size.Y,  size.Z},  -- Top3
-                { size.X, size.Y, -size.Z},  -- Top4
-                {-size.X, -size.Y, -size.Z}, -- Bottom1
-                {-size.X, -size.Y,  size.Z}, -- Bottom2
-                { size.X, -size.Y,  size.Z}, -- Bottom3
-                { size.X, -size.Y, -size.Z}  -- Bottom4
+                {-size.X, size.Y, -size.Z},
+                {-size.X, size.Y,  size.Z},
+                { size.X, size.Y,  size.Z},
+                { size.X, size.Y, -size.Z},
+                {-size.X, -size.Y, -size.Z},
+                {-size.X, -size.Y,  size.Z},
+                { size.X, -size.Y,  size.Z},
+                { size.X, -size.Y, -size.Z}
             }
             for i, off in ipairs(offsets) do
                 local worldPoint = (root.CFrame * CFrame.new(unpack(off))).p
                 corners[i] = Camera:WorldToViewportPoint(worldPoint)
             end
 
-            -- Determine colors based on team check and alive/dead
+            -- Determine colors based on alive/dead
             local mainColor, tracerColor, shifterColor, textColor, skeletonColor
             local deadHSV = Settings.Visuals.DeadColor or {0.5, 0.5, 0.5, 0, false}
             if data.isDead then
@@ -980,40 +1262,24 @@ RunService.RenderStepped:Connect(function()
                 textColor = mainColor
                 skeletonColor = mainColor
             else
-                if Settings.Visuals.TeamCheck then
-                    local isEnemy = IsEnemy(player)
-                    local allyHSV = Settings.Visuals.AllyColor
-                    local enemyHSV = Settings.Visuals.EnemyColor
-                    mainColor = isEnemy and HSVToColor(enemyHSV) or HSVToColor(allyHSV)
-                    tracerColor = mainColor
-                    shifterColor = HSVToColor(Settings.Visuals.Shifter.Color)
-                    textColor = HSVToColor(Settings.Visuals.Name.Color)
-                    skeletonColor = HSVToColor(Settings.Visuals.Skeleton.Color)
-                else
-                    mainColor = HSVToColor(Settings.Visuals.Box.Color)
-                    tracerColor = HSVToColor(Settings.Visuals.Tracers.Color)
-                    shifterColor = HSVToColor(Settings.Visuals.Shifter.Color)
-                    textColor = HSVToColor(Settings.Visuals.Name.Color)
-                    skeletonColor = HSVToColor(Settings.Visuals.Skeleton.Color)
-                end
+                mainColor = HSVToColor(Settings.Visuals.Box.Color)
+                tracerColor = HSVToColor(Settings.Visuals.Tracers.Color)
+                shifterColor = HSVToColor(Settings.Visuals.Shifter.Color)
+                textColor = HSVToColor(Settings.Visuals.Name.Color)
+                skeletonColor = HSVToColor(Settings.Visuals.Skeleton.Color)
             end
 
             -- Update line positions
             local lines = data.lines
 
-            -- Top edges
             lines.line1.From = Vector2.new(corners[1].X, corners[1].Y); lines.line1.To = Vector2.new(corners[2].X, corners[2].Y)
             lines.line2.From = Vector2.new(corners[2].X, corners[2].Y); lines.line2.To = Vector2.new(corners[3].X, corners[3].Y)
             lines.line3.From = Vector2.new(corners[3].X, corners[3].Y); lines.line3.To = Vector2.new(corners[4].X, corners[4].Y)
             lines.line4.From = Vector2.new(corners[4].X, corners[4].Y); lines.line4.To = Vector2.new(corners[1].X, corners[1].Y)
-
-            -- Bottom edges
             lines.line5.From = Vector2.new(corners[5].X, corners[5].Y); lines.line5.To = Vector2.new(corners[6].X, corners[6].Y)
             lines.line6.From = Vector2.new(corners[6].X, corners[6].Y); lines.line6.To = Vector2.new(corners[7].X, corners[7].Y)
             lines.line7.From = Vector2.new(corners[7].X, corners[7].Y); lines.line7.To = Vector2.new(corners[8].X, corners[8].Y)
             lines.line8.From = Vector2.new(corners[8].X, corners[8].Y); lines.line8.To = Vector2.new(corners[5].X, corners[5].Y)
-
-            -- Vertical edges
             lines.line9.From = Vector2.new(corners[5].X, corners[5].Y); lines.line9.To = Vector2.new(corners[1].X, corners[1].Y)
             lines.line10.From = Vector2.new(corners[6].X, corners[6].Y); lines.line10.To = Vector2.new(corners[2].X, corners[2].Y)
             lines.line11.From = Vector2.new(corners[7].X, corners[7].Y); lines.line11.To = Vector2.new(corners[3].X, corners[3].Y)
@@ -1037,7 +1303,6 @@ RunService.RenderStepped:Connect(function()
                 thickness = math.clamp(1/distance*100, 0.1, 4)
             end
 
-            -- Apply properties to lines
             for _, line in pairs(lines) do
                 if line ~= lines.Tracer then
                     line.Color = mainColor
@@ -1165,7 +1430,7 @@ RunService.RenderStepped:Connect(function()
                 data.Weapon.Visible = false
             end
 
-            -- Skeleton (только для живых, у трупов нет скелета)
+            -- Skeleton (только для живых)
             if Settings.Visuals.Skeleton.Enabled and not data.isDead then
                 UpdateSkeleton(data, char, skeletonColor, Settings.Visuals.Skeleton.Thickness)
             else
@@ -1174,7 +1439,6 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- Update objects
     UpdateObjectESP(ItemESP, "ItemText")
     UpdateObjectESP(QuestESP, "QuestItems")
     UpdateObjectESP(VehicleESP, "Vehicles")
@@ -1241,7 +1505,7 @@ Players.PlayerAdded:Connect(function(player)
     end)
 end)
 
--- Cleanup on player removal (когда игрок полностью покидает игру)
+-- Cleanup on player removal
 Players.PlayerRemoving:Connect(RemovePlayerESP)
 
 -- Zoom
@@ -1253,4 +1517,46 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-print("Data Hub - Project Delta (Complete ESP with Dead Players in Gray, Fixed ItemText Distance) loaded")
+-- Draggable radar
+local inset = game:GetService("GuiService"):GetGuiInset()
+local dragging = false
+local offset = Vector2.new(0, 0)
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and Settings.Visuals.Radar.Enabled then
+        local mousePos = Vector2.new(Mouse.X, Mouse.Y + inset.Y)
+        if (mousePos - RadarInfo.Position).Magnitude < RadarInfo.Radius then
+            offset = RadarInfo.Position - mousePos
+            dragging = true
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+-- Radar mouse position tracking
+local mouseDot = NewCircle(1, Color3.fromRGB(255, 255, 255), 3, true, 1)
+coroutine.wrap(function()
+    while true do
+        task.wait()
+        if Settings.Visuals.Radar.Enabled then
+            local mousePos = Vector2.new(Mouse.X, Mouse.Y + inset.Y)
+            if (mousePos - RadarInfo.Position).Magnitude < RadarInfo.Radius then
+                mouseDot.Position = mousePos
+                mouseDot.Visible = true
+            else
+                mouseDot.Visible = false
+            end
+            if dragging then
+                RadarInfo.Position = mousePos + offset
+            end
+        else
+            mouseDot.Visible = false
+        end
+    end
+end)()
+
+print("Data Hub - Project Delta (Complete ESP with Radar, ViewTracer, RGB colors) loaded")
