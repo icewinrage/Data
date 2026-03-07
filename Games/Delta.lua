@@ -1,4 +1,4 @@
--- Data Hub - Project Delta (Complete ESP: 3D Box, Shifter, Pro HealthBar, Nametag, Distance, Weapon, Skeleton, Dead ESP, Radar, ViewTracer)
+-- Data Hub - Project Delta (Complete ESP with Radar, ViewTracer, RGB colors, Chams, Fixed Radar)
 -- Game ID: 2862098693
 -- Features: RageBot, Gun Mods, World, Misc, and Ultimate ESP (all elements, dead players in gray, fixed corpse tracking)
 
@@ -58,7 +58,7 @@ local Settings = {
         },
         Box = {
             Enabled = false,
-            Color = {1, 0, 0, 0, false},  -- красный (базовый)
+            Color = {1, 0, 0, 0, false},  -- красный
             Thickness = 2
         },
         Tracers = {
@@ -73,46 +73,45 @@ local Settings = {
         },
         Health = {
             Bar = false,
+            Text = false,
             ColorMode = "Gradient",
-            Position = "Left"
+            Position = "Left",
+            BarWidth = 2,  -- ширина полоски
+            LowColor = {1, 0, 0, 0, false},  -- красный
+            HighColor = {0, 1, 0, 0, false}  -- зелёный
         },
         Name = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false}   -- белый
+            Color = {1, 1, 1, 0, false},  -- белый
+            Size = 14,
+            Position = "Top"  -- Top, Bottom
         },
         Distance = {
             Enabled = false,
             Color = {1, 1, 1, 0, false},
-            Mode = "Studs"
+            Mode = "Studs",
+            Size = 12,
+            Position = "Bottom"  -- Bottom, Top
         },
         Weapon = {
             Enabled = false,
-            Color = {1, 1, 1, 0, false}
+            Color = {1, 1, 1, 0, false},
+            Size = 12
         },
         Skeleton = {
             Enabled = false,
             Color = {1, 1, 1, 0, false},
             Thickness = 2
         },
-        Radar = {
+        Chams = {
             Enabled = false,
-            Position = {200, 200},
-            Radius = 100,
-            Scale = 1,
-            RadarBack = {0.0, 1, 0.04, 0.9, false},  -- тёмно-серый
-            RadarBorder = {0.67, 0, 0.3, 0.75, false}, -- серый
-            LocalPlayerDot = {0, 0, 1, 1, false}, -- белый
-            PlayerDot = {0.6, 1, 1, 1, false}, -- голубой
-            HealthColor = true,
-            TeamCheck = true
-        },
-        ViewTracer = {
-            Enabled = false,
-            Color = {0.1, 1, 1, 1, false}, -- оранжевый
-            Thickness = 1,
-            AutoThickness = true,
-            Length = 15,
-            Smoothness = 0.2
+            EnemyColor = {0.03, 0.7, 0.5, 0.5, false},  -- красный
+            AllyColor = {0.3, 0.7, 0.3, 0.5, false},    -- зелёный
+            FillTransparency = 0.5,
+            OutlineTransparency = 0.1,
+            TeamCheck = true,
+            ChangeViewmodels = false,
+            ViewmodelsChams = false
         },
         AutoThickness = true,
         TeamCheck = true,
@@ -330,35 +329,60 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(hsv, color) Settings.Visuals.Shifter.Color = hsv end})
     end
 
-    -- Health Bar Section
+    -- Health Bar Section (расширенная)
     local HealthSection = VisualsTab:Section({Name = "Health Bar", Side = "Right"}) do
         HealthSection:Toggle({Name = "Enable Health Bar", Flag = "Delta/Visuals/Health/Bar", Value = false,
             Callback = function(val) Settings.Visuals.Health.Bar = val end})
+        HealthSection:Toggle({Name = "Show Health Text", Flag = "Delta/Visuals/Health/Text", Value = false,
+            Callback = function(val) Settings.Visuals.Health.Text = val end})
+        HealthSection:Slider({Name = "Bar Width", Flag = "Delta/Visuals/Health/BarWidth", Min = 1, Max = 6, Value = 2,
+            Callback = function(val) Settings.Visuals.Health.BarWidth = val end})
         HealthSection:Dropdown({Name = "Color Mode", Flag = "Delta/Visuals/Health/ColorMode", List = {
             {Name = "Gradient", Mode = "Button", Value = true},
-            {Name = "Red", Mode = "Button"},
-            {Name = "Green", Mode = "Button"}
+            {Name = "Custom", Mode = "Button"}
         }, Callback = function(selected) Settings.Visuals.Health.ColorMode = selected[1] end})
+        HealthSection:Colorpicker({Name = "Low Health Color", Flag = "Delta/Visuals/Health/LowColor", Value = Settings.Visuals.Health.LowColor,
+            Callback = function(hsv, color) Settings.Visuals.Health.LowColor = hsv end})
+        HealthSection:Colorpicker({Name = "High Health Color", Flag = "Delta/Visuals/Health/HighColor", Value = Settings.Visuals.Health.HighColor,
+            Callback = function(hsv, color) Settings.Visuals.Health.HighColor = hsv end})
+        HealthSection:Dropdown({Name = "Position", Flag = "Delta/Visuals/Health/Position", List = {
+            {Name = "Left", Mode = "Button", Value = true},
+            {Name = "Right", Mode = "Button"},
+            {Name = "Top", Mode = "Button"},
+            {Name = "Bottom", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Health.Position = selected[1] end})
     end
 
-    -- Name Section
+    -- Name Section (расширенная)
     local NameSection = VisualsTab:Section({Name = "Name", Side = "Right"}) do
         NameSection:Toggle({Name = "Enable Name", Flag = "Delta/Visuals/Name/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Name.Enabled = val end})
         NameSection:Colorpicker({Name = "Name Color", Flag = "Delta/Visuals/Name/Color", Value = Settings.Visuals.Name.Color,
             Callback = function(hsv, color) Settings.Visuals.Name.Color = hsv end})
+        NameSection:Slider({Name = "Size", Flag = "Delta/Visuals/Name/Size", Min = 8, Max = 24, Value = 14,
+            Callback = function(val) Settings.Visuals.Name.Size = val end})
+        NameSection:Dropdown({Name = "Position", Flag = "Delta/Visuals/Name/Position", List = {
+            {Name = "Top", Mode = "Button", Value = true},
+            {Name = "Bottom", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Name.Position = selected[1] end})
     end
 
-    -- Distance Section
+    -- Distance Section (расширенная)
     local DistanceSection = VisualsTab:Section({Name = "Distance", Side = "Right"}) do
         DistanceSection:Toggle({Name = "Enable Distance", Flag = "Delta/Visuals/Distance/Enabled", Value = false,
             Callback = function(val) Settings.Visuals.Distance.Enabled = val end})
         DistanceSection:Colorpicker({Name = "Distance Color", Flag = "Delta/Visuals/Distance/Color", Value = Settings.Visuals.Distance.Color,
             Callback = function(hsv, color) Settings.Visuals.Distance.Color = hsv end})
+        DistanceSection:Slider({Name = "Size", Flag = "Delta/Visuals/Distance/Size", Min = 8, Max = 24, Value = 12,
+            Callback = function(val) Settings.Visuals.Distance.Size = val end})
         DistanceSection:Dropdown({Name = "Mode", Flag = "Delta/Visuals/Distance/Mode", List = {
             {Name = "Studs", Mode = "Button", Value = true},
             {Name = "Meters", Mode = "Button"}
         }, Callback = function(selected) Settings.Visuals.Distance.Mode = selected[1] end})
+        DistanceSection:Dropdown({Name = "Position", Flag = "Delta/Visuals/Distance/Position", List = {
+            {Name = "Bottom", Mode = "Button", Value = true},
+            {Name = "Top", Mode = "Button"}
+        }, Callback = function(selected) Settings.Visuals.Distance.Position = selected[1] end})
     end
 
     -- Weapon Section
@@ -367,6 +391,8 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(val) Settings.Visuals.Weapon.Enabled = val end})
         WeaponSection:Colorpicker({Name = "Weapon Color", Flag = "Delta/Visuals/Weapon/Color", Value = Settings.Visuals.Weapon.Color,
             Callback = function(hsv, color) Settings.Visuals.Weapon.Color = hsv end})
+        WeaponSection:Slider({Name = "Size", Flag = "Delta/Visuals/Weapon/Size", Min = 8, Max = 24, Value = 12,
+            Callback = function(val) Settings.Visuals.Weapon.Size = val end})
     end
 
     -- Skeleton Section
@@ -377,6 +403,33 @@ local VisualsTab = Window:Tab({Name = "Visuals"}) do
             Callback = function(hsv, color) Settings.Visuals.Skeleton.Color = hsv end})
         SkeletonSection:Slider({Name = "Thickness", Flag = "Delta/Visuals/Skeleton/Thickness", Min = 1, Max = 5, Value = 2,
             Callback = function(val) Settings.Visuals.Skeleton.Thickness = val end})
+    end
+
+    -- Chams Section
+    local ChamsSection = VisualsTab:Section({Name = "Chams", Side = "Left"}) do
+        ChamsSection:Toggle({Name = "Enable Chams", Flag = "Delta/Visuals/Chams/Enabled", Value = false,
+            Callback = function(val) 
+                Settings.Visuals.Chams.Enabled = val
+                if val then
+                    LoadChams()
+                else
+                    UnloadChams()
+                end
+            end})
+        ChamsSection:Colorpicker({Name = "Enemy Color", Flag = "Delta/Visuals/Chams/EnemyColor", Value = Settings.Visuals.Chams.EnemyColor,
+            Callback = function(hsv, color) Settings.Visuals.Chams.EnemyColor = hsv end})
+        ChamsSection:Colorpicker({Name = "Ally Color", Flag = "Delta/Visuals/Chams/AllyColor", Value = Settings.Visuals.Chams.AllyColor,
+            Callback = function(hsv, color) Settings.Visuals.Chams.AllyColor = hsv end})
+        ChamsSection:Slider({Name = "Fill Transparency", Flag = "Delta/Visuals/Chams/FillTransparency", Min = 0, Max = 1, Precise = 2, Value = 0.5,
+            Callback = function(val) Settings.Visuals.Chams.FillTransparency = val end})
+        ChamsSection:Slider({Name = "Outline Transparency", Flag = "Delta/Visuals/Chams/OutlineTransparency", Min = 0, Max = 1, Precise = 2, Value = 0.1,
+            Callback = function(val) Settings.Visuals.Chams.OutlineTransparency = val end})
+        ChamsSection:Toggle({Name = "Team Check", Flag = "Delta/Visuals/Chams/TeamCheck", Value = true,
+            Callback = function(val) Settings.Visuals.Chams.TeamCheck = val end})
+        ChamsSection:Toggle({Name = "Change Viewmodels", Flag = "Delta/Visuals/Chams/ChangeViewmodels", Value = false,
+            Callback = function(val) Settings.Visuals.Chams.ChangeViewmodels = val end})
+        ChamsSection:Toggle({Name = "Viewmodels Chams", Flag = "Delta/Visuals/Chams/ViewmodelsChams", Value = false,
+            Callback = function(val) Settings.Visuals.Chams.ViewmodelsChams = val end})
     end
 
     -- Radar Section
@@ -610,6 +663,51 @@ local function IsEnemy(player)
 end
 
 -- ███████████████████████████████████████████████████████
+-- CHAMS SYSTEM (from provided code)
+-- ███████████████████████████████████████████████████████
+local Tag = "DataHubChams"
+local ChamsCons = {}
+
+local function PaintChams(Chr, Plr)
+    if not Chr or Chr:FindFirstChild(Tag) then return end
+    local H = Instance.new("Highlight")
+    local IsEnemy = (Settings.Visuals.Chams.TeamCheck and Plr.Team ~= LocalPlayer.Team) or not Settings.Visuals.Chams.TeamCheck
+    
+    H.Name = Tag
+    H.FillColor = IsEnemy and HSVToColor(Settings.Visuals.Chams.EnemyColor) or HSVToColor(Settings.Visuals.Chams.AllyColor)
+    H.OutlineColor = Color3.fromRGB(255, 255, 255)
+    H.FillTransparency = Settings.Visuals.Chams.FillTransparency
+    H.OutlineTransparency = Settings.Visuals.Chams.OutlineTransparency
+    H.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    H.Adornee = Chr
+    H.Parent = Chr
+end
+
+local function HookChams(Plr)
+    if Plr == LocalPlayer then return end
+    ChamsCons[Plr] = Plr.CharacterAdded:Connect(function(c) task.wait(0.1); PaintChams(c, Plr) end)
+    if Plr.Character then PaintChams(Plr.Character, Plr) end
+end
+
+local function LoadChams()
+    if _G.UnloadChams then _G.UnloadChams() end
+    for _, v in next, Players:GetPlayers() do HookChams(v) end
+    ChamsCons.Add = Players.PlayerAdded:Connect(HookChams)
+end
+
+function UnloadChams()
+    if ChamsCons.Add then ChamsCons.Add:Disconnect() end
+    for _, c in next, ChamsCons do if c.Disconnect then c:Disconnect() end end
+    for _, v in next, Players:GetPlayers() do 
+        if v.Character and v.Character:FindFirstChild(Tag) then 
+            v.Character[Tag]:Destroy() 
+        end
+    end
+end
+
+_G.UnloadChams = UnloadChams
+
+-- ███████████████████████████████████████████████████████
 -- ULTIMATE ESP SYSTEM (Full Feature)
 -- ███████████████████████████████████████████████████████
 
@@ -725,13 +823,18 @@ RadarBorder.Visible = false
 local LocalPlayerDot = NewTriangle()
 LocalPlayerDot.Visible = false
 
+-- Таблицы для отслеживания радарных точек
+local RadarDots = {}
+local MouseDot = NewCircle(1, Color3.fromRGB(255, 255, 255), 3, true, 1)
+MouseDot.Visible = false
+
 local function UpdateRadar()
     if not Settings.Visuals.Radar.Enabled then
         RadarBackground.Visible = false
         RadarBorder.Visible = false
         LocalPlayerDot.Visible = false
-        for _, data in pairs(RadarData) do
-            if data.dot then data.dot.Visible = false end
+        for _, dot in pairs(RadarDots) do
+            if dot then dot.Visible = false end
         end
         return
     end
@@ -777,16 +880,13 @@ local function GetRelative(pos)
     end
 end
 
-local function CreateRadarDot(player)
-    if RadarData[player] then return end
-    local dot = NewCircle(1, RadarInfo.PlayerDot, 3, true, 1)
-    RadarData[player] = { dot = dot }
-end
+local function UpdateRadarDot(player, data)
+    if not Settings.Visuals.Radar.Enabled then
+        if data then data.Visible = false end
+        return
+    end
 
-local function UpdateRadarDot(player)
-    local data = RadarData[player]
-    if not data then return end
-    local dot = data.dot
+    local dot = data
     if not dot then return end
 
     local char = player.Character
@@ -822,7 +922,7 @@ local function UpdateRadarDot(player)
         dot.Color = Color3.new(1 - healthPercent, healthPercent, 0)
     elseif RadarInfo.Team_Check then
         if player.TeamColor == LocalPlayer.TeamColor then
-            dot.Color = RadarInfo.LocalPlayerDot -- используем цвет локального игрока для союзников
+            dot.Color = RadarInfo.LocalPlayerDot
         else
             dot.Color = RadarInfo.PlayerDot
         end
@@ -843,17 +943,12 @@ local function CreateViewTracer(player)
     line.Color = HSVToColor(Settings.Visuals.ViewTracer.Color)
     line.Thickness = Settings.Visuals.ViewTracer.Thickness
     line.Transparency = 1
-    ViewTracerData[player] = { line = line }
+    ViewTracerData[player] = line
 end
 
-local function UpdateViewTracer(player)
-    local data = ViewTracerData[player]
-    if not data then return end
-    local line = data.line
-    if not line then return end
-
-    if not Settings.Visuals.ViewTracer.Enabled then
-        line.Visible = false
+local function UpdateViewTracer(player, line)
+    if not Settings.Visuals.ViewTracer.Enabled or not line then
+        if line then line.Visible = false end
         return
     end
 
@@ -936,7 +1031,11 @@ local function CreatePlayerESP(player)
         data.SkeletonLines[i] = line
     end
     PlayerESPData[player] = data
-    CreateRadarDot(player)
+    
+    -- Создаём радарную точку
+    local dot = NewCircle(1, RadarInfo.PlayerDot, 3, true, 1)
+    RadarDots[player] = dot
+    
     CreateViewTracer(player)
 end
 
@@ -953,12 +1052,12 @@ local function RemovePlayerESP(player)
         for _, line in ipairs(data.SkeletonLines) do line:Destroy() end
         PlayerESPData[player] = nil
     end
-    if RadarData[player] then
-        RadarData[player].dot:Destroy()
-        RadarData[player] = nil
+    if RadarDots[player] then
+        RadarDots[player]:Destroy()
+        RadarDots[player] = nil
     end
     if ViewTracerData[player] then
-        ViewTracerData[player].line:Destroy()
+        ViewTracerData[player]:Destroy()
         ViewTracerData[player] = nil
     end
 end
@@ -1123,8 +1222,12 @@ RunService.RenderStepped:Connect(function()
         RadarBackground.Visible = false
         RadarBorder.Visible = false
         LocalPlayerDot.Visible = false
-        for _, data in pairs(RadarData) do if data.dot then data.dot.Visible = false end end
-        for _, data in pairs(ViewTracerData) do if data.line then data.line.Visible = false end end
+        for _, dot in pairs(RadarDots) do
+            if dot then dot.Visible = false end
+        end
+        for _, line in pairs(ViewTracerData) do
+            if line then line.Visible = false end
+        end
         return
     end
 
@@ -1135,8 +1238,8 @@ RunService.RenderStepped:Connect(function()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer then
             -- Пропускаем себя
-            if RadarData[player] then RadarData[player].dot.Visible = false end
-            if ViewTracerData[player] then ViewTracerData[player].line.Visible = false end
+            if RadarDots[player] then RadarDots[player].Visible = false end
+            if ViewTracerData[player] then ViewTracerData[player].Visible = false end
         else
             if not PlayerESPData[player] then CreatePlayerESP(player) end
             local data = PlayerESPData[player]
@@ -1158,8 +1261,8 @@ RunService.RenderStepped:Connect(function()
                     data.Distance.Visible = false
                     data.Weapon.Visible = false
                     for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
-                    if RadarData[player] then RadarData[player].dot.Visible = false end
-                    if ViewTracerData[player] then ViewTracerData[player].line.Visible = false end
+                    if RadarDots[player] then RadarDots[player].Visible = false end
+                    if ViewTracerData[player] then ViewTracerData[player].Visible = false end
                     continue
                 end
 
@@ -1177,17 +1280,21 @@ RunService.RenderStepped:Connect(function()
                     data.Distance.Visible = false
                     data.Weapon.Visible = false
                     for _, line in ipairs(data.SkeletonLines) do line.Visible = false end
-                    if RadarData[player] then RadarData[player].dot.Visible = false end
-                    if ViewTracerData[player] then ViewTracerData[player].line.Visible = false end
+                    if RadarDots[player] then RadarDots[player].Visible = false end
+                    if ViewTracerData[player] then ViewTracerData[player].Visible = false end
                     continue
                 end
             end
 
             -- Обновляем радар для этого игрока
-            UpdateRadarDot(player)
+            if RadarDots[player] then
+                UpdateRadarDot(player, RadarDots[player])
+            end
 
             -- Обновляем вью трейсер
-            UpdateViewTracer(player)
+            if ViewTracerData[player] then
+                UpdateViewTracer(player, ViewTracerData[player])
+            end
 
             -- Основной ESP для игрока
             local root = char:FindFirstChild("HumanoidRootPart")
@@ -1364,7 +1471,7 @@ RunService.RenderStepped:Connect(function()
                 data.Shifter.Visible = false
             end
 
-            -- Health Bar (только для живых)
+            -- Health Bar (улучшенная)
             if Settings.Visuals.Health.Bar and not data.isDead then
                 local minX = math.min(corners[1].X, corners[2].X, corners[3].X, corners[4].X, corners[5].X, corners[6].X, corners[7].X, corners[8].X)
                 local maxY = math.max(corners[1].Y, corners[2].Y, corners[3].Y, corners[4].Y, corners[5].Y, corners[6].Y, corners[7].Y, corners[8].Y)
@@ -1373,43 +1480,64 @@ RunService.RenderStepped:Connect(function()
                 local boxHeight = maxY - minY
                 local healthPercent = hum.Health / hum.MaxHealth
                 local fillHeight = boxHeight * healthPercent
+                local barWidth = Settings.Visuals.Health.BarWidth
 
-                local barX = minX - 6
+                local barX = minX - (barWidth + 4)
 
+                -- Фон полоски
                 data.HealthBarBG.From = Vector2.new(barX, maxY)
                 data.HealthBarBG.To = Vector2.new(barX, minY)
-                data.HealthBarBG.Thickness = 4
+                data.HealthBarBG.Thickness = barWidth
                 data.HealthBarBG.Visible = true
 
+                -- Заполнение полоски
                 data.HealthBarFill.From = Vector2.new(barX, maxY)
                 data.HealthBarFill.To = Vector2.new(barX, maxY - fillHeight)
-                data.HealthBarFill.Thickness = 4
-                data.HealthBarFill.Color = Color3.new(1 - healthPercent, healthPercent, 0)
+                data.HealthBarFill.Thickness = barWidth
+
+                if Settings.Visuals.Health.ColorMode == "Gradient" then
+                    local lowColor = HSVToColor(Settings.Visuals.Health.LowColor)
+                    local highColor = HSVToColor(Settings.Visuals.Health.HighColor)
+                    data.HealthBarFill.Color = lowColor:Lerp(highColor, healthPercent)
+                else
+                    data.HealthBarFill.Color = HSVToColor(Settings.Visuals.Health.HighColor)
+                end
                 data.HealthBarFill.Visible = true
+
+                -- Текст здоровья
+                if Settings.Visuals.Health.Text then
+                    data.Name.Visible = true -- используем Name для текста ХП
+                    data.Name.Text = string.format("%.0f HP", hum.Health)
+                    data.Name.Color = textColor
+                    data.Name.Size = Settings.Visuals.Name.Size
+                    data.Name.Position = Vector2.new(pos.X, pos.Y - 70)
+                end
             else
                 data.HealthBarBG.Visible = false
                 data.HealthBarFill.Visible = false
             end
 
-            -- Name
+            -- Name (фиксированное положение, не двигается при приближении)
             if Settings.Visuals.Name.Enabled then
                 data.Name.Visible = true
                 data.Name.Text = player.Name
                 data.Name.Color = textColor
-                data.Name.Size = 14
-                data.Name.Position = Vector2.new(pos.X, pos.Y - 50)
+                data.Name.Size = Settings.Visuals.Name.Size
+                local yOffset = Settings.Visuals.Name.Position == "Top" and -50 or 50
+                data.Name.Position = Vector2.new(pos.X, pos.Y + yOffset)
             else
                 data.Name.Visible = false
             end
 
-            -- Distance
+            -- Distance (фиксированное положение)
             if Settings.Visuals.Distance.Enabled then
                 data.Distance.Visible = true
                 local unit = Settings.Visuals.Distance.Mode == "Meters" and "m" or "studs"
                 data.Distance.Text = string.format("%.0f %s", dist, unit)
                 data.Distance.Color = textColor
-                data.Distance.Size = 12
-                data.Distance.Position = Vector2.new(pos.X, pos.Y + 30)
+                data.Distance.Size = Settings.Visuals.Distance.Size
+                local yOffset = Settings.Visuals.Distance.Position == "Bottom" and 30 or -70
+                data.Distance.Position = Vector2.new(pos.X, pos.Y + yOffset)
             else
                 data.Distance.Visible = false
             end
@@ -1421,8 +1549,8 @@ RunService.RenderStepped:Connect(function()
                     data.Weapon.Visible = true
                     data.Weapon.Text = weaponName
                     data.Weapon.Color = textColor
-                    data.Weapon.Size = 12
-                    data.Weapon.Position = Vector2.new(pos.X, pos.Y + 50)
+                    data.Weapon.Size = Settings.Visuals.Weapon.Size
+                    data.Weapon.Position = Vector2.new(pos.X, pos.Y + 70)
                 else
                     data.Weapon.Visible = false
                 end
@@ -1538,25 +1666,24 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- Radar mouse position tracking
-local mouseDot = NewCircle(1, Color3.fromRGB(255, 255, 255), 3, true, 1)
 coroutine.wrap(function()
     while true do
         task.wait()
         if Settings.Visuals.Radar.Enabled then
             local mousePos = Vector2.new(Mouse.X, Mouse.Y + inset.Y)
             if (mousePos - RadarInfo.Position).Magnitude < RadarInfo.Radius then
-                mouseDot.Position = mousePos
-                mouseDot.Visible = true
+                MouseDot.Position = mousePos
+                MouseDot.Visible = true
             else
-                mouseDot.Visible = false
+                MouseDot.Visible = false
             end
             if dragging then
                 RadarInfo.Position = mousePos + offset
             end
         else
-            mouseDot.Visible = false
+            MouseDot.Visible = false
         end
     end
 end)()
 
-print("Data Hub - Project Delta (Complete ESP with Radar, ViewTracer, RGB colors) loaded")
+print("Data Hub - Project Delta (Complete ESP with Chams, Fixed Radar) loaded")
